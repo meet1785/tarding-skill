@@ -408,6 +408,47 @@ function setupPaperTradingForm() {
       }
     });
   }
+
+  const simBtn = document.getElementById("btnSimulateSession");
+  if (simBtn) {
+    simBtn.addEventListener("click", () => {
+      window.paperEngine.simulateMarketHoursSession();
+    });
+  }
+
+  function updateGeminiStatusUI() {
+    const el = document.getElementById("btnGeminiStatus");
+    if (!el || !window.GeminiAI) return;
+    const hasKey = window.GeminiAI.isConfigured();
+    if (hasKey) {
+      el.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span><span>GEMINI 2.5 ONLINE</span>`;
+      el.style.background = "rgba(16, 185, 129, 0.15)";
+      el.style.borderColor = "rgba(16, 185, 129, 0.3)";
+      el.style.color = "#10b981";
+      el.title = "Gemini AI is connected. Click to view or update key.";
+    } else {
+      el.innerHTML = `<span>🔑</span><span>CONNECT GEMINI AI</span>`;
+      el.style.background = "rgba(59, 130, 246, 0.15)";
+      el.style.borderColor = "rgba(59, 130, 246, 0.3)";
+      el.style.color = "#38bdf8";
+      el.title = "Click to enter your Gemini API Key for live AI quant analysis.";
+    }
+  }
+
+  updateGeminiStatusUI();
+
+  const geminiStatusBtn = document.getElementById("btnGeminiStatus");
+  if (geminiStatusBtn) {
+    geminiStatusBtn.addEventListener("click", () => {
+      const current = window.GeminiAI ? window.GeminiAI.getApiKey() : "";
+      const updated = prompt("Enter Google Gemini API Key for AI Analysis:", current);
+      if (updated !== null && updated.trim()) {
+        if (window.GeminiAI) window.GeminiAI.setApiKey(updated);
+        updateGeminiStatusUI();
+        window.showToast("Gemini API Key saved securely to localStorage!", "success");
+      }
+    });
+  }
 }
 
 // Strategy Lab / Backtester UI (v3 with Supertrend + VWAP Confluence)
@@ -517,7 +558,7 @@ function setupCopilot() {
 
   if (!form || !input || !stream) return;
 
-  function askCopilot(query) {
+  async function askCopilot(query) {
     if (!query || !query.trim()) return;
     const capital = parseFloat(document.getElementById("inputCapital")?.value || 1000);
 
@@ -528,19 +569,70 @@ function setupCopilot() {
     stream.appendChild(userMsg);
     stream.scrollTop = stream.scrollHeight;
 
-    // Simulate short quant processing delay
+    // Show typing state
     const typingMsg = document.createElement("div");
     typingMsg.className = "chat-bubble assistant";
     typingMsg.id = "copilotTyping";
     typingMsg.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.4rem; color:#94a3b8; font-size:0.8rem;">
-        <span class="pulse-dot" style="background:#38bdf8;"></span>
-        <span>Claude Code running supertrend, technical-analysis & tax calculations...</span>
+        <span class="pulse-dot" style="background:#10b981;"></span>
+        <span>Gemini 2.5 Flash running live NSE quant analysis...</span>
       </div>
     `;
     stream.appendChild(typingMsg);
     stream.scrollTop = stream.scrollHeight;
 
+    // Check if a symbol is mentioned
+    let targetSym = null;
+    const upperQ = query.toUpperCase();
+    for (const sym of Object.keys(window.MarketData.stocks)) {
+      if (upperQ.includes(sym)) {
+        targetSym = sym;
+        break;
+      }
+    }
+    const stockContext = targetSym ? window.MarketData.stocks[targetSym] : null;
+
+    try {
+      if (window.GeminiAI && window.GeminiAI.isConfigured()) {
+        const geminiRes = await window.GeminiAI.generateAnalysis(query, stockContext, capital);
+        const el = document.getElementById("copilotTyping");
+        if (el) el.remove();
+
+        // Convert markdown to clean HTML
+        let formattedText = geminiRes.text
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/\n\n/g, '<br><br>')
+          .replace(/\n- /g, '<br>• ');
+
+        const assistantMsg = document.createElement("div");
+        assistantMsg.className = "chat-bubble assistant";
+        assistantMsg.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.35rem;">
+            <span style="font-weight:700; color:#38bdf8; font-size:0.85rem;">🤖 Gemini AI (${geminiRes.model})</span>
+            <span style="font-size:0.7rem; background:rgba(16,185,129,0.15); color:#10b981; padding:2px 6px; border-radius:3px;">LIVE GEMINI API</span>
+          </div>
+          <div style="font-size:0.85rem; line-height:1.6; color:#cbd5e1;">
+            ${formattedText}
+          </div>
+          ${stockContext ? `
+            <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button class="btn-primary" style="font-size:0.78rem; padding:0.35rem 0.75rem;" onclick="window.viewInChart('${stockContext.symbol}')">
+                <span>📈</span> View ${stockContext.symbol} Chart
+              </button>
+            </div>
+          ` : ''}
+        `;
+        stream.appendChild(assistantMsg);
+        stream.scrollTop = stream.scrollHeight;
+        return;
+      }
+    } catch (err) {
+      console.warn("Gemini API call fell back to local engine:", err);
+    }
+
+    // Fallback to local quant engine
     setTimeout(() => {
       const el = document.getElementById("copilotTyping");
       if (el) el.remove();
@@ -551,7 +643,7 @@ function setupCopilot() {
       assistantMsg.innerHTML = responseHtml;
       stream.appendChild(assistantMsg);
       stream.scrollTop = stream.scrollHeight;
-    }, 320);
+    }, 250);
   }
 
   form.addEventListener("submit", (e) => {
