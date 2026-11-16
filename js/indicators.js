@@ -1,9 +1,44 @@
 /**
- * TradeMind AI - Quantitative Technical Indicator Engine
- * Calculates RSI, ATR, Moving Averages, Bollinger Bands, MACD, Fibonacci, and Position Sizing.
+ * TradeMind AI - Quantitative Technical Indicator Engine (Institutional Upgrade)
+ * Calculates VWAP, VWAP Bands, RSI, ATR, Moving Averages, Bollinger Bands, MACD, Fibonacci,
+ * and Strict Capital Sizing based on Professional Institutional Quant Rules.
  */
 
 const Indicators = {
+  // Volume Weighted Average Price (VWAP) & Standard Deviation Bands
+  calculateVWAP(data) {
+    let cumVol = 0;
+    let cumVolPrice = 0;
+    const vwap = [];
+    const varianceArr = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const c = data[i];
+      const typicalPrice = (c.high + c.low + c.close) / 3;
+      cumVol += c.volume;
+      cumVolPrice += typicalPrice * c.volume;
+
+      const currentVwap = cumVol === 0 ? typicalPrice : cumVolPrice / cumVol;
+      vwap.push(Math.round(currentVwap * 100) / 100);
+
+      // Variance from VWAP for standard deviation bands
+      const diff = typicalPrice - currentVwap;
+      varianceArr.push(diff * diff);
+    }
+
+    // Upper and Lower VWAP 1.5-sigma bands
+    const upperBand = [];
+    const lowerBand = [];
+    for (let i = 0; i < vwap.length; i++) {
+      const slice = varianceArr.slice(0, i + 1);
+      const stdDev = Math.sqrt(slice.reduce((a, b) => a + b, 0) / (i + 1));
+      upperBand.push(Math.round((vwap[i] + 1.5 * stdDev) * 100) / 100);
+      lowerBand.push(Math.round((vwap[i] - 1.5 * stdDev) * 100) / 100);
+    }
+
+    return { vwap, upperBand, lowerBand };
+  },
+
   // Simple Moving Average
   calculateSMA(data, period = 20) {
     const sma = [];
@@ -151,24 +186,54 @@ const Indicators = {
     };
   },
 
+  // Liquidity Trap & Fakeout Detector
+  detectLiquidityTrap(ltp, vwap, rsi, dayOpen, dayHigh) {
+    const vwapDistPct = ((ltp - vwap) / vwap) * 100;
+    const isExtendedFromVWAP = vwapDistPct > 1.4;
+    const isOverbought = rsi >= 75;
+    const isFadingHigh = (dayHigh - ltp) > (dayHigh - dayOpen) * 0.4 && ltp < dayHigh;
+
+    if (isExtendedFromVWAP && isOverbought) {
+      return {
+        isTrap: true,
+        type: "OVEREXTENDED_BREAKOUT_TRAP",
+        severity: "HIGH",
+        message: "⚠️ DO NOT BUY BREAKOUT: Price is stretched " + vwapDistPct.toFixed(1) + "% above VWAP with RSI at " + rsi + ". High probability of institutional distribution into retail morning volume."
+      };
+    }
+
+    if (ltp < vwap && isFadingHigh) {
+      return {
+        isTrap: true,
+        type: "FAILED_ORB_REVERSAL",
+        severity: "CRITICAL",
+        message: "⚠️ BEARISH REGIME: Price broke below VWAP after failing to hold the morning surge. Long trades are disqualified."
+      };
+    }
+
+    return {
+      isTrap: false,
+      type: "CLEAN_STRUCTURE",
+      severity: "LOW",
+      message: "✓ Structure valid. Price trading near VWAP value zone."
+    };
+  },
+
   // Professional Position Sizing for Indian Market (INR)
   calculatePositionSize(capital, riskPct, entryPrice, stopLossPrice, leverage = 5) {
     const riskAmount = capital * (riskPct / 100);
     const riskPerShare = Math.abs(entryPrice - stopLossPrice);
 
     if (riskPerShare <= 0) {
-      return { quantity: 0, capitalRequired: 0, marginRequired: 0 };
+      return { shares: 0, riskAmount: 0, riskPerShare: 0, totalTradeValue: 0, marginRequired: 0, allocationPct: 0, leverageUsed: leverage };
     }
 
-    // Fixed fractional shares by risk
     let shares = Math.floor(riskAmount / riskPerShare);
-
-    // Max shares allowed by leverage buying power
     const maxBuyingPower = capital * leverage;
     const maxSharesAllowed = Math.floor(maxBuyingPower / entryPrice);
 
     shares = Math.min(shares, maxSharesAllowed);
-    shares = Math.max(shares, 1); // At least 1 share if affordable
+    shares = Math.max(shares, 1);
 
     const totalTradeValue = Math.round(shares * entryPrice * 100) / 100;
     const marginRequired = Math.round((totalTradeValue / leverage) * 100) / 100;

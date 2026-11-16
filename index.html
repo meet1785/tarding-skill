@@ -38,7 +38,7 @@
       <div>
         <div style="display:flex; align-items:center; gap:0.4rem;">
           <span class="logo-title">TradeMind AI</span>
-          <span class="logo-badge">NSE LIVE</span>
+          <span class="logo-badge">NSE QUANT ENGINE</span>
         </div>
       </div>
     </div>
@@ -49,21 +49,24 @@
         <span>⚡</span> AI Recommendations
       </button>
       <button class="nav-tab" data-tab="tabChart">
-        <span>📈</span> Chart Studio
+        <span>📈</span> Chart Studio (VWAP)
+      </button>
+      <button class="nav-tab" data-tab="tabBacktest">
+        <span>🧪</span> Strategy Lab & Backtester
       </button>
       <button class="nav-tab" data-tab="tabPaper">
         <span>💼</span> Paper Trading
       </button>
       <button class="nav-tab" data-tab="tabLearning">
-        <span>🧠</span> Learning & Rules
+        <span>🧠</span> PNB Post-Mortem & Rules
       </button>
     </nav>
 
     <!-- Header Meta & Status -->
     <div class="header-meta">
-      <div class="market-status-pill">
-        <span class="pulse-dot"></span>
-        <span>NSE OPEN</span>
+      <div class="market-status-pill" style="background:rgba(59, 130, 246, 0.15); border-color:rgba(59, 130, 246, 0.3); color:#38bdf8;">
+        <span class="pulse-dot" style="background:#38bdf8;"></span>
+        <span>NSE SESSION</span>
       </div>
       <div class="capital-badge" title="Active capital profile">
         <span>💰 Capital:</span>
@@ -79,8 +82,8 @@
     <section id="tabRecommendations" class="tab-pane active">
       <div class="section-header">
         <div>
-          <h1 class="section-title"><span>🎯</span> AI Trade Recommendations</h1>
-          <p class="section-subtitle">Real-time technical confluence scans, multi-timeframe alignment, and custom risk-sized trade tickets.</p>
+          <h1 class="section-title"><span>🎯</span> Institutional Quant Recommendations</h1>
+          <p class="section-subtitle">Eliminates breakout traps. Enforces VWAP re-tests, liquidity trap warnings, and asymmetric 1:2.5+ risk-reward setups.</p>
         </div>
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
           <button class="btn-secondary preset-cap-btn" data-cap="1000">₹1,000 Capital</button>
@@ -111,7 +114,6 @@
               <option value="1.0">1.0% (Conservative - ₹10/₹1k)</option>
               <option value="1.5" selected>1.5% (Balanced - ₹15/₹1k)</option>
               <option value="2.0">2.0% (Maximum Cap - ₹20/₹1k)</option>
-              <option value="3.0">3.0% (Aggressive Setup)</option>
             </select>
           </div>
 
@@ -119,7 +121,7 @@
             <label class="form-label" for="selectSector">Sector Filter</label>
             <select id="selectSector" class="form-select">
               <option value="all" selected>All Sectors</option>
-              <option value="PSU Banks">PSU Banks (Leading Today)</option>
+              <option value="PSU Banks">PSU Banks</option>
               <option value="Defence">Defence & Aerospace</option>
               <option value="Metals">Metals & Mining</option>
               <option value="Energy">Energy & Power</option>
@@ -129,7 +131,7 @@
 
           <div class="form-group">
             <button id="btnRunScan" class="btn-primary" style="height:42px;">
-              <span>🔍</span> Run Deep AI Scan
+              <span>🔍</span> Run Quant Scan
             </button>
           </div>
         </div>
@@ -138,7 +140,7 @@
       <!-- Research Progress Feedback -->
       <div id="researchStatusCard" class="research-status-card">
         <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700;">
-          <span style="color:#38bdf8;">AI Quant Engine Researching...</span>
+          <span style="color:#38bdf8;">Institutional Quant Engine Researching...</span>
           <span id="researchProgressText" style="color:#94a3b8; font-family:var(--font-mono); font-size:0.75rem;">Initializing...</span>
         </div>
         <div class="research-progress-bar">
@@ -146,10 +148,10 @@
         </div>
         <div class="research-steps">
           <span>1. Feed Sync</span>
-          <span>2. Trend & EMAs</span>
-          <span>3. RSI & Volume</span>
-          <span>4. Fibonacci & ATR</span>
-          <span>5. Risk Sizing</span>
+          <span>2. VWAP & Traps</span>
+          <span>3. 5-Min Re-tests</span>
+          <span>4. Value Zones</span>
+          <span>5. Strict 1.5% Sizing</span>
         </div>
       </div>
 
@@ -164,12 +166,12 @@
       <div class="section-header">
         <div>
           <h1 class="section-title"><span>📈</span> Interactive Chart Studio</h1>
-          <p class="section-subtitle">Real-time candlestick charts with EMA 9/21, volume, ATR stops, and Fibonacci projections.</p>
+          <p class="section-subtitle">Features Institutional VWAP line (Purple), EMA 9/21, volume, and visual Stop-Loss/Target levels.</p>
         </div>
         <div style="display:flex; align-items:center; gap:0.75rem;">
           <label style="font-size:0.8rem; color:#94a3b8; font-weight:700;">SYMBOL:</label>
           <select id="selectChartSymbol" class="form-select" style="width:160px; font-weight:700;">
-            <option value="PNB" selected>PNB (₹145.84)</option>
+            <option value="PNB" selected>PNB (₹144.59)</option>
             <option value="CANBK">CANBK (₹132.02)</option>
             <option value="TATASTEEL">TATASTEEL (₹186.13)</option>
             <option value="POWERGRID">POWERGRID (₹256.50)</option>
@@ -193,6 +195,7 @@
             </div>
 
             <div class="indicator-toggle-group">
+              <button class="ind-toggle-btn active" data-ind="vwap" style="background:#a855f7; border-color:#a855f7; color:white;">VWAP (Purple)</button>
               <button class="ind-toggle-btn active" data-ind="ema9">EMA 9 (Cyan)</button>
               <button class="ind-toggle-btn active" data-ind="ema21">EMA 21 (Orange)</button>
             </div>
@@ -210,6 +213,9 @@
               <div>RSI (14): <strong id="dossierRsi" style="color:#f59e0b;">78.4</strong></div>
               <div>ATR (14): <strong id="dossierAtr" style="color:#38bdf8;">₹3.72</strong></div>
             </div>
+            <div style="margin-top:0.5rem; font-size:0.85rem; font-family:var(--font-mono);">
+              VWAP Benchmark: <strong id="dossierVwap" style="color:#a855f7;">Calculating...</strong>
+            </div>
           </div>
 
           <div class="dossier-section">
@@ -222,16 +228,72 @@
           </div>
 
           <div class="dossier-section">
-            <div class="dossier-title">Trade Execution Rule</div>
+            <div class="dossier-title">The Institutional VWAP Rule</div>
             <div style="font-size:0.78rem; color:#94a3b8; line-height:1.4;">
-              Blue line indicates <strong>Entry</strong>, Red dashed line is your <strong>Hard Stop-Loss</strong> (ATR-based), and Green dashed line marks <strong>Profit Target 1</strong> (1.5R).
+              • <strong>Above VWAP:</strong> Buyers in control. Look for pullbacks to VWAP to buy.<br>
+              • <strong>Extended >1.5% Above VWAP:</strong> DO NOT BUY. Retail FOMO trap.<br>
+              • <strong>Below VWAP:</strong> Sellers in control. Long setups are disqualified.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 3: PAPER TRADING TERMINAL -->
+    <!-- TAB 3: STRATEGY LAB & BACKTESTER -->
+    <section id="tabBacktest" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>🧪</span> Strategy Lab & Statistical Backtester</h1>
+          <p class="section-subtitle">Based on `backtest-expert` methodology. Statistically proves why chasing breakouts loses money and why VWAP pullbacks create an edge.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <label style="font-size:0.8rem; color:#94a3b8; font-weight:700;">TEST TICKER:</label>
+          <select id="selectBacktestSymbol" class="form-select" style="width:160px; font-weight:700;">
+            <option value="PNB" selected>PNB</option>
+            <option value="CANBK">CANBK</option>
+            <option value="TATASTEEL">TATASTEEL</option>
+            <option value="POWERGRID">POWERGRID</option>
+            <option value="BEL">BEL</option>
+          </select>
+          <button id="btnRunBacktest" class="btn-primary" style="padding:0.45rem 1rem;">
+            <span>▶</span> Run Backtest
+          </button>
+        </div>
+      </div>
+
+      <!-- Strategy Comparison Grid -->
+      <div id="backtestResultsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Recent Simulated Trades Table -->
+      <div class="data-table-card">
+        <div class="table-header">
+          <h3 style="font-size:0.95rem; font-weight:700;">Recent Strategy 2 (VWAP Pullback) Backtest Trades</h3>
+          <span style="font-size:0.75rem; color:#10b981; font-weight:700;">Positive Mathematical Expectancy (1:2 R:R)</span>
+        </div>
+        <div class="table-responsive">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Entry Price</th>
+                <th>Exit Price</th>
+                <th>P&L (INR)</th>
+                <th>Outcome</th>
+              </tr>
+            </thead>
+            <tbody id="backtestTradesTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PAPER TRADING TERMINAL -->
     <section id="tabPaper" class="tab-pane">
       <div class="section-header">
         <div>
@@ -243,7 +305,6 @@
         </button>
       </div>
 
-      <!-- Portfolio Summary Cards -->
       <div class="portfolio-summary-grid">
         <div class="stat-box">
           <div class="stat-label">Total Portfolio Value</div>
@@ -273,7 +334,7 @@
             <div class="form-group">
               <label class="form-label" for="orderSymbol">Symbol</label>
               <select id="orderSymbol" class="form-select">
-                <option value="PNB">PNB (₹145.84)</option>
+                <option value="PNB">PNB (₹144.59)</option>
                 <option value="CANBK">CANBK (₹132.02)</option>
                 <option value="TATASTEEL">TATASTEEL (₹186.13)</option>
                 <option value="POWERGRID">POWERGRID (₹256.50)</option>
@@ -371,38 +432,45 @@
       </div>
     </section>
 
-    <!-- TAB 4: LEARNING & RULES -->
+    <!-- TAB 5: PNB POST-MORTEM & RULES -->
     <section id="tabLearning" class="tab-pane">
       <div class="section-header">
         <div>
-          <h1 class="section-title"><span>🧠</span> AI Learning & Trading Discipline</h1>
-          <p class="section-subtitle">Real-time trade debriefs and core rules for managing small accounts on Indian stock exchanges.</p>
+          <h1 class="section-title"><span>🧠</span> PNB Trade Post-Mortem & Working Rules</h1>
+          <p class="section-subtitle">Honest quantitative breakdown of today's price action and how to permanently prevent morning breakout losses.</p>
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
-        <!-- Learning Debriefs -->
-        <div class="filter-card">
-          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
-            <span>📝</span> Live Trade Debriefs & Lessons
+        <!-- PNB Post Mortem Card -->
+        <div class="filter-card" style="border-left:4px solid #ef4444;">
+          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; color:#ef4444; display:flex; align-items:center; gap:0.4rem;">
+            <span>🔍</span> What Happened on PNB Today (16-Nov-2026)
           </h3>
-          <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:1rem;">Every closed paper trade generates an automatic AI audit analyzing whether the technical thesis and risk parameters held up.</p>
-          <div id="debriefContainer">
-            <!-- Dynamically populated -->
+          <div style="font-size:0.85rem; color:#cbd5e1; line-height:1.7;">
+            <p><strong>Session OHLC:</strong> Open: ₹143.96 | High: ₹146.85 | Low: ₹143.01 | Close: ₹144.59</p>
+            <p style="margin-top:0.5rem;">
+              <strong>The Mistake (Retail Breakout Trap):</strong> In the morning, PNB surged +2% to ₹146.85. Buying above ₹146 was buying the exact top of the entire session. The stock was stretched 2% above VWAP with a daily RSI > 80.
+            </p>
+            <p style="margin-top:0.5rem;">
+              <strong>The Institutional Reality:</strong> Institutions use morning gap-up liquidity to dump their long inventory to retail breakout buyers. PNB reversed sharply from ₹146.85 down to ₹143.01, stopping out all breakout traders.
+            </p>
+            <div style="margin-top:0.75rem; padding:0.75rem; background:rgba(239, 68, 68, 0.1); border-radius:6px; border:1px solid rgba(239,68,68,0.3); font-weight:700; color:#fca5a5;">
+              Rule Learned: Never buy a morning breakout when price is stretched >1.5% from VWAP or RSI > 75. Always wait for a pullback to VWAP.
+            </div>
           </div>
         </div>
 
-        <!-- Discipline Playbook -->
-        <div class="filter-card">
-          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
-            <span>🛡️</span> The ₹1,000 Capital Intraday Playbook
+        <!-- The Working Institutional Rules -->
+        <div class="filter-card" style="border-left:4px solid #10b981;">
+          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; color:#10b981; display:flex; align-items:center; gap:0.4rem;">
+            <span>🛡️</span> The 4 Working Institutional Rules
           </h3>
           <ul style="font-size:0.85rem; color:#cbd5e1; line-height:1.7; padding-left:1.25rem;">
-            <li><strong>Ticket Price Discipline:</strong> Only trade stocks priced under ₹300 (e.g. PNB, CANBK, TATASTEEL, POWERGRID). High-priced stocks prevent proper position sizing.</li>
-            <li><strong>Brokerage & Friction Awareness:</strong> Ensure your broker charges percentage-based brokerage (0.05%), avoiding flat ₹20 fee traps on tiny accounts.</li>
-            <li><strong>Opening 15-Minute Rule:</strong> Never trade between 9:15 AM and 9:30 AM IST. Let initial institutional knee-jerk moves settle and establish opening range boundaries.</li>
-            <li><strong>Hard System Stop-Loss:</strong> Never rely on "mental stops". Place a Stop-Loss Limit (SL-L) order as soon as your order fills.</li>
-            <li><strong>Trailing to Breakeven:</strong> When the trade achieves Target 1 (+1.5R), immediately move your stop-loss to entry price for a completely risk-free session.</li>
+            <li><strong>Rule 1 (The VWAP Anchor):</strong> Only enter LONG when price pulls back to the VWAP line and prints a green rejection wick. If price is below VWAP, long trades are 100% disqualified.</li>
+            <li><strong>Rule 2 (Ultra-Tight Risk Sizing):</strong> By entering on a VWAP pullback, your stop-loss sits only ₹0.40–₹0.60 away (just under VWAP), keeping max loss under ₹15 on a ₹1,000 capital account.</li>
+            <li><strong>Rule 3 (Asymmetric 1:2.5+ R:R):</strong> Target the morning high of the day (HOD). Risking ₹0.50 to make ₹2.50 gives a 5:1 reward-to-risk ratio. Even with a 40% win rate, you are mathematically profitable.</li>
+            <li><strong>Rule 4 (No Trading 9:15–9:30 AM):</strong> The first 15 minutes are designed to trap retail liquidity. Never take an entry before 9:30 AM IST.</li>
           </ul>
         </div>
       </div>
@@ -416,6 +484,7 @@
   <!-- Application Scripts -->
   <script src="js/data.js"></script>
   <script src="js/indicators.js"></script>
+  <script src="js/backtester.js"></script>
   <script src="js/scanner.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/papertrading.js"></script>

@@ -1,6 +1,6 @@
 /**
- * TradeMind AI - Interactive Live Chart Studio
- * Powered by TradingView Lightweight Charts with multi-indicator overlays & price line projections.
+ * TradeMind AI - Interactive Live Chart Studio (v2 with Institutional VWAP)
+ * Powered by TradingView Lightweight Charts with multi-indicator overlays & VWAP Value Projections.
  */
 
 class ChartStudio {
@@ -9,15 +9,16 @@ class ChartStudio {
     this.chart = null;
     this.candleSeries = null;
     this.volumeSeries = null;
+    this.vwapSeries = null;
     this.ema9Series = null;
     this.ema21Series = null;
     this.activeSymbol = "PNB";
     this.priceLines = [];
     this.visibleIndicators = {
+      vwap: true,
       ema9: true,
       ema21: true,
-      volume: true,
-      levels: true
+      volume: true
     };
   }
 
@@ -76,16 +77,23 @@ class ChartStudio {
       }
     });
 
+    // Institutional VWAP Line (Purple)
+    this.vwapSeries = this.chart.addLineSeries({
+      color: "#a855f7",
+      lineWidth: 2,
+      title: "VWAP (Institutional Anchor)"
+    });
+
     // EMA 9 & EMA 21
     this.ema9Series = this.chart.addLineSeries({
       color: "#06b6d4",
-      lineWidth: 2,
+      lineWidth: 1.5,
       title: "EMA 9"
     });
 
     this.ema21Series = this.chart.addLineSeries({
       color: "#f59e0b",
-      lineWidth: 2,
+      lineWidth: 1.5,
       title: "EMA 21"
     });
 
@@ -113,7 +121,6 @@ class ChartStudio {
     this.activeSymbol = symbol;
     const candles = window.MarketData.getCandles(symbol, 60);
 
-    // Format for Lightweight Charts
     const formattedCandles = candles.map(c => ({
       time: c.time,
       open: c.open,
@@ -131,6 +138,11 @@ class ChartStudio {
     this.candleSeries.setData(formattedCandles);
     this.volumeSeries.setData(formattedVolume);
 
+    // Calculate & plot VWAP
+    const vwapData = window.Indicators.calculateVWAP(candles);
+    const formattedVwap = candles.map((c, i) => ({ time: c.time, value: vwapData.vwap[i] }));
+    this.vwapSeries.setData(formattedVwap);
+
     // Calculate & plot EMAs
     const ema9 = window.Indicators.calculateEMA(candles, 9);
     const ema21 = window.Indicators.calculateEMA(candles, 21);
@@ -146,11 +158,11 @@ class ChartStudio {
     this.ema9Series.setData(formattedEma9);
     this.ema21Series.setData(formattedEma21);
 
-    // Clear and redraw setup price lines
-    this.drawSetupLines(symbol, candles);
+    // Redraw setup price lines based on VWAP
+    this.drawSetupLines(symbol, candles, vwapData.vwap[vwapData.vwap.length - 1]);
 
     // Update side technical dossier
-    this.updateDossier(symbol, candles);
+    this.updateDossier(symbol, candles, vwapData.vwap[vwapData.vwap.length - 1]);
   }
 
   updateLatestTick(price) {
@@ -168,8 +180,7 @@ class ChartStudio {
     });
   }
 
-  drawSetupLines(symbol, candles) {
-    // Clear old lines
+  drawSetupLines(symbol, candles, currentVwap) {
     this.priceLines.forEach(l => this.candleSeries.removePriceLine(l));
     this.priceLines = [];
 
@@ -179,38 +190,42 @@ class ChartStudio {
     const ltp = stock.price;
     const atr = stock.atr;
 
-    // Draw planned entry, stop loss, and targets
+    // Entry near VWAP
+    const plannedEntry = currentVwap ? Math.round(currentVwap * 100) / 100 : ltp;
+    const stopPrice = Math.round((plannedEntry - 0.5 * atr) * 100) / 100;
+    const targetPrice = Math.round((plannedEntry + 1.2 * atr) * 100) / 100;
+
     const entryLine = this.candleSeries.createPriceLine({
-      price: ltp,
+      price: plannedEntry,
       color: "#38bdf8",
       lineWidth: 2,
       lineStyle: 0,
       axisLabelVisible: true,
-      title: "ENTRY: ₹" + ltp
+      title: "VWAP ENTRY: ₹" + plannedEntry
     });
 
     const stopLine = this.candleSeries.createPriceLine({
-      price: Math.round((ltp - atr) * 100) / 100,
+      price: stopPrice,
       color: "#ef4444",
       lineWidth: 2,
       lineStyle: 2,
       axisLabelVisible: true,
-      title: "STOP-LOSS: ₹" + Math.round((ltp - atr) * 100) / 100
+      title: "STOP-LOSS: ₹" + stopPrice
     });
 
     const targetLine = this.candleSeries.createPriceLine({
-      price: Math.round((ltp + atr * 1.6) * 100) / 100,
+      price: targetPrice,
       color: "#10b981",
       lineWidth: 2,
       lineStyle: 2,
       axisLabelVisible: true,
-      title: "TARGET: ₹" + Math.round((ltp + atr * 1.6) * 100) / 100
+      title: "TARGET 1: ₹" + targetPrice
     });
 
     this.priceLines.push(entryLine, stopLine, targetLine);
   }
 
-  updateDossier(symbol, candles) {
+  updateDossier(symbol, candles, currentVwap) {
     const stock = window.MarketData.stocks[symbol];
     if (!stock) return;
 
@@ -227,6 +242,13 @@ class ChartStudio {
     const dossierAtr = document.getElementById("dossierAtr");
     if (dossierAtr) dossierAtr.innerText = "₹" + stock.atr;
 
+    const dossierVwap = document.getElementById("dossierVwap");
+    if (dossierVwap && currentVwap) {
+      const diff = Math.round((stock.price - currentVwap) * 100) / 100;
+      const diffPct = Math.round((diff / currentVwap) * 10000) / 100;
+      dossierVwap.innerHTML = `₹${currentVwap.toFixed(2)} <span style="font-size:0.75rem; color:${diff >= 0 ? '#10b981' : '#ef4444'}">(${diff >= 0 ? '+' : ''}${diffPct}%)</span>`;
+    }
+
     const fibBody = document.getElementById("fibTableBody");
     if (fibBody) {
       fibBody.innerHTML = Object.entries(fib.levels)
@@ -236,7 +258,10 @@ class ChartStudio {
   }
 
   toggleIndicator(name) {
-    if (name === "ema9") {
+    if (name === "vwap") {
+      this.visibleIndicators.vwap = !this.visibleIndicators.vwap;
+      this.vwapSeries.applyOptions({ visible: this.visibleIndicators.vwap });
+    } else if (name === "ema9") {
       this.visibleIndicators.ema9 = !this.visibleIndicators.ema9;
       this.ema9Series.applyOptions({ visible: this.visibleIndicators.ema9 });
     } else if (name === "ema21") {
