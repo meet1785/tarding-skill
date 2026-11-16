@@ -208,11 +208,20 @@ const MarketData = {
     const candles = [];
     
     const now = new Date();
+    let stepMs = 24 * 60 * 60 * 1000;
+    let isIntraday = false;
+    if (interval === "15m") { stepMs = 15 * 60 * 1000; isIntraday = true; }
+    else if (interval === "5m") { stepMs = 5 * 60 * 1000; isIntraday = true; }
+    else if (interval === "1m") { stepMs = 60 * 1000; isIntraday = true; }
+
     let currentPrice = basePrice * 0.90; // Start 10% lower 60 days ago
     
     for (let i = count; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const timeStr = time.toISOString().split("T")[0];
+      const timeMs = now.getTime() - i * stepMs;
+      // For daily use YYYY-MM-DD; for intraday use unix timestamp in seconds (strictly ordered)
+      const candleTime = isIntraday 
+        ? Math.floor(timeMs / 1000) 
+        : new Date(timeMs).toISOString().split("T")[0];
       
       const dayTrend = (Math.random() - 0.47) * volatility;
       const open = Math.round((currentPrice + (Math.random() - 0.5) * (volatility * 0.4)) * 100) / 100;
@@ -224,7 +233,7 @@ const MarketData = {
       currentPrice = close;
       
       candles.push({
-        time: timeStr,
+        time: candleTime,
         open,
         high,
         low,

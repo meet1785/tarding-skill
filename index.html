@@ -11,8 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- TradingView Lightweight Charts Library -->
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- TradingView Lightweight Charts Library (Pinned to v4.2.1 with Fallbacks) -->
+  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    if (typeof LightweightCharts === "undefined") {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.2.1/lightweight-charts.standalone.production.js"><\\/script>');
+    }
+  </script>
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">

@@ -127,13 +127,12 @@ function setupTabs() {
 
         if (target === "tabChart" && window.chartStudio) {
           setTimeout(() => {
-            if (window.chartStudio.chart) {
-              window.chartStudio.chart.applyOptions({
-                width: window.chartStudio.container.clientWidth,
-                height: window.chartStudio.container.clientHeight || 480
-              });
+            if (!window.chartStudio.chart) {
+              window.chartStudio.init();
+            } else {
+              window.chartStudio.resize();
             }
-          }, 50);
+          }, 60);
         }
 
         if (target === "tabPaper" && window.paperEngine) {
@@ -379,6 +378,18 @@ function setupChartControls() {
       }
     });
   }
+
+  // Timeframe selector buttons (1D, 15m, 5m, 1m)
+  document.querySelectorAll(".tf-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tf-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tf = btn.getAttribute("data-tf") || btn.innerText.trim();
+      if (window.chartStudio) {
+        window.chartStudio.setTimeframe(tf);
+      }
+    });
+  });
 
   document.querySelectorAll(".ind-toggle-btn").forEach(btn => {
     btn.addEventListener("click", () => {
