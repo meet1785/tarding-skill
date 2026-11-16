@@ -273,6 +273,32 @@ function renderRecommendations(recommendations, capital, leverage) {
             </div>
           </div>
 
+          <!-- Multi-Timeframe Confluence Matrix -->
+          ${rec.mtfMatrix ? `
+          <div style="margin: 0.65rem 0; padding: 0.5rem 0.65rem; background: rgba(15, 23, 42, 0.65); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.72rem;">
+              <span style="color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Multi-Timeframe Alignment</span>
+              <span style="font-weight: 700; color: ${rec.mtfMatrix.bullishCount >= 3 ? '#10b981' : (rec.mtfMatrix.bullishCount === 2 ? '#f59e0b' : '#ef4444')}; font-size: 0.75rem;">
+                ${rec.mtfMatrix.bullishCount}/4 Bullish (${rec.mtfMatrix.confluenceStatus.replace(/_/g, ' ')})
+              </span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 0.68rem; text-align: center; font-family: var(--font-mono);">
+              <div style="padding: 2px 4px; border-radius: 4px; background: ${rec.mtfMatrix.daily.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${rec.mtfMatrix.daily.bias === 'BULLISH' ? '#34d399' : '#f87171'}; border: 1px solid ${rec.mtfMatrix.daily.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                D: ${rec.mtfMatrix.daily.bias === 'BULLISH' ? '▲ BULL' : '▼ BEAR'}
+              </div>
+              <div style="padding: 2px 4px; border-radius: 4px; background: ${rec.mtfMatrix.m15.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${rec.mtfMatrix.m15.bias === 'BULLISH' ? '#34d399' : '#f87171'}; border: 1px solid ${rec.mtfMatrix.m15.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                15m: ${rec.mtfMatrix.m15.bias === 'BULLISH' ? '▲ BULL' : '▼ BEAR'}
+              </div>
+              <div style="padding: 2px 4px; border-radius: 4px; background: ${rec.mtfMatrix.m5.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${rec.mtfMatrix.m5.bias === 'BULLISH' ? '#34d399' : '#f87171'}; border: 1px solid ${rec.mtfMatrix.m5.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                5m: ${rec.mtfMatrix.m5.bias === 'BULLISH' ? '▲ BULL' : '▼ BEAR'}
+              </div>
+              <div style="padding: 2px 4px; border-radius: 4px; background: ${rec.mtfMatrix.m1.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${rec.mtfMatrix.m1.bias === 'BULLISH' ? '#34d399' : '#f87171'}; border: 1px solid ${rec.mtfMatrix.m1.bias === 'BULLISH' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                1m: ${rec.mtfMatrix.m1.bias === 'BULLISH' ? '▲ BULL' : '▼ BEAR'}
+              </div>
+            </div>
+          </div>
+          ` : ''}
+
           <!-- Position Sizing & Realistic Taxes Box -->
           <div style="background:var(--bg-primary); padding:0.65rem 0.85rem; border-radius:6px; font-size:0.78rem; font-family:var(--font-mono); border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; margin-bottom:2px;">

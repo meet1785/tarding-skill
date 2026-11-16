@@ -163,4 +163,9 @@ const StrategyBacktester = {
   }
 };
 
-window.StrategyBacktester = StrategyBacktester;
+if (typeof window !== "undefined") {
+  window.StrategyBacktester = StrategyBacktester;
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = StrategyBacktester;
+}

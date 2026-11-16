@@ -33,7 +33,24 @@
 - **Automated Stop-Loss & Target Triggers:** Automatically detects when price touches your Stop-Loss or Profit Target, closes the position, and books the profit/loss.
 - **Local Persistence:** Retains your virtual account balance, open positions, and trade history across page reloads via `localStorage`.
 
-### 4. 🧠 Learning Journal & Discipline Scorecard
+### 4. 🛡️ Dynamic Trailing Stop-Loss Engine
+- **Breakeven Protection (+1.0R):** Automatically locks stop-loss to Breakeven (+0.10 buffer) when trade profit reaches +1.0R, ensuring winning trades never become losing trades.
+- **Dynamic ATR Trailing (+1.5R):** Automatically ratchets stop-loss upward along with price action using 0.8x ATR buffer, locking in runner profits.
+- **Ratchet Invariance:** Mathematical guarantee that trailing stop-loss only moves higher and never pulls back during counter-trend dips.
+- **Manual Override:** Traders can toggle Auto-Trail ON/OFF per individual position with 1 click.
+
+### 5. 🔬 Multi-Timeframe Confluence Matrix
+- **4-Timeframe Alignment:** Simultaneously evaluates Daily (SMA 20), 15-Minute (Supertrend 10,3), 5-Minute (VWAP & EMA 9/21 cross), and 1-Minute Micro-Momentum.
+- **Confluence Scoring:** Flags `FULL_BULLISH_CONFLUENCE` (4/4), `STRONG_BULLISH_ALIGNMENT` (3/4), or warns against `MIXED_CHOP_DIVERGENCE` and `BEARISH_DIVERGENCE` to avoid breakout traps.
+
+### 6. 🧪 Comprehensive Automated Unit & Integration Test Suite
+- Run 32 automated unit and integration tests across quant mathematics, risk sizing, brokerage taxes, trailing stop logic, and safeguards:
+  ```bash
+  npm test
+  # or: node tests/run_tests.js
+  ```
+
+### 7. 🧠 Learning Journal & Discipline Scorecard
 - **Automated AI Trade Debriefs:** When any paper trade is closed, the system analyzes whether the technical thesis held up and provides actionable takeaways.
 - **The ₹1,000 Capital Intraday Playbook:** Core risk management rules for trading small accounts on Indian exchanges (avoiding flat brokerage fee traps, respecting the 9:15–9:30 AM opening range rule, and trailing stops to breakeven).
 

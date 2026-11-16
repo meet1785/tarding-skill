@@ -72,6 +72,14 @@ const ResearchScanner = {
         orb
       );
 
+      // Multi-Timeframe Alignment Matrix (Daily, 15m, 5m, 1m)
+      const mtfMatrix = window.Indicators.calculateMultiTimeframeMatrix(
+        candles,
+        ltp,
+        currentVwap,
+        currentSupertrendDir
+      );
+
       // Liquidity Trap Analysis
       const trapAnalysis = window.Indicators.detectLiquidityTrap(ltp, currentVwap, rsi, stock.open, stock.high);
 
@@ -161,6 +169,7 @@ const ResearchScanner = {
         tradeRating,
         trapAnalysis,
         confluence,
+        mtfMatrix,
         isLong,
         entry,
         stopLoss,
@@ -186,4 +195,9 @@ const ResearchScanner = {
   }
 };
 
-window.ResearchScanner = ResearchScanner;
+if (typeof window !== "undefined") {
+  window.ResearchScanner = ResearchScanner;
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = ResearchScanner;
+}

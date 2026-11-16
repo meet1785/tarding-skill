@@ -1,0 +1,22 @@
+{
+  "name": "trademind-ai",
+  "version": "2.1.0",
+  "description": "Institutional Quantitative Trading & Research Platform for Indian Equities (NSE/BSE) with 4-Timeframe Confluence, Dynamic Trailing Stop-Loss, and Real Brokerage Accounting",
+  "main": "js/app.js",
+  "scripts": {
+    "test": "node tests/run_tests.js"
+  },
+  "keywords": [
+    "trading",
+    "nse",
+    "bse",
+    "intraday",
+    "quant",
+    "vwap",
+    "supertrend",
+    "paper-trading",
+    "risk-management"
+  ],
+  "author": "meet1785",
+  "license": "MIT"
+}

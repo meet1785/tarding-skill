@@ -430,8 +430,12 @@ const Indicators = {
 
   // Professional Position Sizing for Indian Market (INR)
   calculatePositionSize(capital, riskPct, entryPrice, stopLossPrice, leverage = 5) {
+    if (stopLossPrice >= entryPrice || entryPrice <= 0 || capital <= 0 || riskPct <= 0) {
+      return { shares: 0, riskAmount: 0, riskPerShare: 0, totalTradeValue: 0, marginRequired: 0, allocationPct: 0, leverageUsed: leverage };
+    }
+
     const riskAmount = capital * (riskPct / 100);
-    const riskPerShare = Math.abs(entryPrice - stopLossPrice);
+    const riskPerShare = entryPrice - stopLossPrice;
 
     if (riskPerShare <= 0) {
       return { shares: 0, riskAmount: 0, riskPerShare: 0, totalTradeValue: 0, marginRequired: 0, allocationPct: 0, leverageUsed: leverage };
@@ -442,7 +446,13 @@ const Indicators = {
     const maxSharesAllowed = Math.floor(maxBuyingPower / entryPrice);
 
     shares = Math.min(shares, maxSharesAllowed);
-    shares = Math.max(shares, 1);
+    if (shares < 1) {
+      if (maxSharesAllowed >= 1 && (1 * riskPerShare) <= riskAmount * 1.5) {
+        shares = 1;
+      } else {
+        shares = 0;
+      }
+    }
 
     const totalTradeValue = Math.round(shares * entryPrice * 100) / 100;
     const marginRequired = Math.round((totalTradeValue / leverage) * 100) / 100;
@@ -456,7 +466,67 @@ const Indicators = {
       allocationPct: Math.round((marginRequired / capital) * 10000) / 100,
       leverageUsed: leverage
     };
+  },
+
+  // Multi-Timeframe Confluence Matrix (Daily, 15m, 5m, 1m)
+  calculateMultiTimeframeMatrix(candles, ltp, vwap, supertrendDir) {
+    if (!candles || candles.length < 20) {
+      return {
+        daily: { bias: "NEUTRAL", score: 0 },
+        m15: { bias: "NEUTRAL", score: 0 },
+        m5: { bias: "NEUTRAL", score: 0 },
+        m1: { bias: "NEUTRAL", score: 0 },
+        confluenceStatus: "INSUFFICIENT_DATA",
+        alignedBullish: false
+      };
+    }
+
+    // 1. Daily Trend Proxy (SMA 20)
+    const sma20 = this.calculateSMA(candles, 20);
+    const currSma20 = sma20[sma20.length - 1];
+    const dailyBullish = currSma20 ? ltp >= currSma20 : true;
+
+    // 2. 15-Minute Trend (Supertrend 10,3 direction)
+    const m15Bullish = supertrendDir === 1;
+
+    // 3. 5-Minute Setup (Price vs VWAP & EMA 9/21 cross)
+    const ema9Arr = this.calculateEMA(candles, 9);
+    const ema21Arr = this.calculateEMA(candles, 21);
+    const currEma9 = ema9Arr[ema9Arr.length - 1];
+    const currEma21 = ema21Arr[ema21Arr.length - 1];
+    const m5Bullish = ltp >= vwap && currEma9 >= currEma21;
+
+    // 4. 1-Minute Micro-Momentum (Last 3 candles direction)
+    const last3 = candles.slice(-3);
+    const m1Bullish = last3.length > 0 ? last3[last3.length - 1].close >= last3[0].open : true;
+
+    const bullishCount = [dailyBullish, m15Bullish, m5Bullish, m1Bullish].filter(Boolean).length;
+
+    let confluenceStatus = "BEARISH_DIVERGENCE";
+    if (bullishCount === 4) {
+      confluenceStatus = "FULL_BULLISH_CONFLUENCE";
+    } else if (bullishCount === 3) {
+      confluenceStatus = "STRONG_BULLISH_ALIGNMENT";
+    } else if (bullishCount === 2) {
+      confluenceStatus = "MIXED_CHOP_DIVERGENCE";
+    }
+
+    return {
+      daily: { bias: dailyBullish ? "BULLISH" : "BEARISH", label: "Daily (SMA20)" },
+      m15: { bias: m15Bullish ? "BULLISH" : "BEARISH", label: "15m (Supertrend)" },
+      m5: { bias: m5Bullish ? "BULLISH" : "BEARISH", label: "5m (VWAP + EMA)" },
+      m1: { bias: m1Bullish ? "BULLISH" : "BEARISH", label: "1m (Momentum)" },
+      bullishCount,
+      totalTimeframes: 4,
+      confluenceStatus,
+      alignedBullish: bullishCount >= 3
+    };
   }
 };
 
-window.Indicators = Indicators;
+if (typeof window !== "undefined") {
+  window.Indicators = Indicators;
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = Indicators;
+}

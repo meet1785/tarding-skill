@@ -73,6 +73,13 @@ class PaperTradingEngine {
     this.render();
   }
 
+  resetCircuitBreaker() {
+    this.dailyDrawdownHalt = false;
+    this.consecutiveLosses = 0;
+    this.saveState();
+    this.render();
+  }
+
   // Replay today's actual 16-Nov market session (09:15 - 15:30 IST)
   simulateMarketHoursSession() {
     this.initialCapital = 1000.0;
@@ -178,6 +185,21 @@ class PaperTradingEngine {
     }
   }
 
+  // Toggle dynamic trailing stop on an individual position
+  toggleTrailingStop(positionId) {
+    const pos = this.positions.find(p => p.id === positionId);
+    if (!pos) return;
+    pos.autoTrail = !pos.autoTrail;
+    if (pos.autoTrail && !pos.initialStopLoss) {
+      pos.initialStopLoss = pos.stopLoss;
+    }
+    this.saveState();
+    this.render();
+    if (window.showToast) {
+      window.showToast(`${pos.symbol} Trailing Stop ${pos.autoTrail ? 'ACTIVATED' : 'PAUSED'}`, "info");
+    }
+  }
+
   renderAutoBotStatus() {
     const btn = document.getElementById("btnToggleAutoBot");
     if (!btn) return;
@@ -225,7 +247,8 @@ class PaperTradingEngine {
       };
     }
 
-    const { symbol, action = "BUY", type = "MIS", quantity, price, stopLoss, target } = order;
+    const { symbol, action = "BUY", type = "MIS", quantity, stopLoss, target } = order;
+    const price = order.price || order.entryPrice || (typeof MarketData !== "undefined" && MarketData.stocks && MarketData.stocks[symbol] ? MarketData.stocks[symbol].price : (typeof window !== "undefined" && window.MarketData && window.MarketData.stocks[symbol] ? window.MarketData.stocks[symbol].price : 100));
     const leverage = type === "MIS" ? 5 : 1;
     const totalValue = quantity * price;
     const marginRequired = totalValue / leverage;
@@ -248,7 +271,11 @@ class PaperTradingEngine {
       target: target || 0,
       marginUsed: marginRequired,
       unrealizedPnL: 0,
-      openTime: new Date().toLocaleTimeString()
+      openTime: new Date().toLocaleTimeString(),
+      autoTrail: order.autoTrail !== undefined ? order.autoTrail : true,
+      initialStopLoss: stopLoss || 0,
+      highestPrice: price,
+      trailStatus: "INITIAL"
     };
 
     this.positions.push(position);
@@ -272,6 +299,29 @@ class PaperTradingEngine {
         const diff = pos.action === "BUY" ? (newPrice - pos.entryPrice) : (pos.entryPrice - newPrice);
         pos.unrealizedPnL = Math.round(diff * pos.quantity * 100) / 100;
         stateChanged = true;
+
+        // Dynamic Trailing Stop-Loss Logic (Breakeven Lock & ATR Trail)
+        if (pos.autoTrail && pos.action === "BUY" && pos.initialStopLoss > 0) {
+          const initialRisk = Math.max(pos.entryPrice - pos.initialStopLoss, 0.40);
+          
+          // Phase 1: Lock Breakeven (+0.10) once price reaches +1.0R
+          if (newPrice >= pos.entryPrice + initialRisk && pos.stopLoss < pos.entryPrice) {
+            pos.stopLoss = Math.round((pos.entryPrice + 0.10) * 100) / 100;
+            pos.trailStatus = "BREAKEVEN_LOCKED";
+            stateChanged = true;
+          }
+
+          // Phase 2: Dynamic ATR trail once price reaches +1.5R or above
+          if (newPrice >= pos.entryPrice + initialRisk * 1.5) {
+            pos.highestPrice = Math.max(pos.highestPrice || pos.entryPrice, newPrice);
+            const dynamicStop = Math.round((pos.highestPrice - initialRisk * 0.8) * 100) / 100;
+            if (dynamicStop > pos.stopLoss) {
+              pos.stopLoss = dynamicStop;
+              pos.trailStatus = "TRAILING_ACTIVE";
+              stateChanged = true;
+            }
+          }
+        }
 
         // Check Target Hit
         if (pos.target > 0) {
@@ -305,7 +355,8 @@ class PaperTradingEngine {
     const finalPrice = exitPrice || pos.currentPrice;
 
     // Calculate real NSE Brokerage, STT, Exchange fees, and GST
-    const taxes = window.Indicators.calculateNSEBrokerageAndTaxes(pos.entryPrice, finalPrice, pos.quantity);
+    const ind = (typeof window !== "undefined" && window.Indicators) ? window.Indicators : (typeof Indicators !== "undefined" ? Indicators : require("./indicators.js"));
+    const taxes = ind.calculateNSEBrokerageAndTaxes(pos.entryPrice, finalPrice, pos.quantity);
 
     // Refund margin + Net Realized PnL (after brokerage/STT)
     this.cash += pos.marginUsed + taxes.netPnL;
@@ -429,7 +480,16 @@ class PaperTradingEngine {
           <td>₹${p.entryPrice.toFixed(2)}</td>
           <td>₹${p.currentPrice.toFixed(2)}</td>
           <td style="color:${pnlColor}; font-weight:700;">${pnlSign}₹${p.unrealizedPnL.toFixed(2)}</td>
-          <td style="color:#64748b;">SL: ₹${p.stopLoss} | Tgt: ₹${p.target}</td>
+          <td style="color:#64748b;">
+            SL: ₹${p.stopLoss} | Tgt: ₹${p.target}
+            <div style="margin-top:2px;">
+              <span style="font-size:0.68rem; cursor:pointer; color:${p.autoTrail ? '#10b981' : '#94a3b8'}; text-decoration:underline;" onclick="window.paperEngine.toggleTrailingStop('${p.id}')">
+                ${p.autoTrail ? '🛡️ Auto-Trail ON' : '⚪ Auto-Trail OFF'}
+              </span>
+              ${p.trailStatus === 'BREAKEVEN_LOCKED' ? '<span style="font-size:0.65rem; background:rgba(16,185,129,0.2); color:#10b981; padding:1px 4px; border-radius:3px; margin-left:3px;">BREAKEVEN</span>' : ''}
+              ${p.trailStatus === 'TRAILING_ACTIVE' ? '<span style="font-size:0.65rem; background:rgba(56,189,248,0.2); color:#38bdf8; padding:1px 4px; border-radius:3px; margin-left:3px;">PROFIT LOCKED</span>' : ''}
+            </div>
+          </td>
           <td>
             <button class="btn-secondary" style="padding:2px 8px; font-size:0.75rem;" onclick="window.paperEngine.closePosition('${p.id}', 'MANUAL EXIT')">Exit</button>
           </td>
@@ -513,4 +573,9 @@ class PaperTradingEngine {
   }
 }
 
-window.PaperTradingEngine = PaperTradingEngine;
+if (typeof window !== "undefined") {
+  window.PaperTradingEngine = PaperTradingEngine;
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = PaperTradingEngine;
+}

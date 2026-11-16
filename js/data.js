@@ -243,4 +243,9 @@ const MarketData = {
   }
 };
 
-window.MarketData = MarketData;
+if (typeof window !== "undefined") {
+  window.MarketData = MarketData;
+}
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = MarketData;
+}
