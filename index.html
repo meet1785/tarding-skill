@@ -48,6 +48,9 @@
       <button class="nav-tab active" data-tab="tabRecommendations">
         <span>⚡</span> AI Recommendations
       </button>
+      <button class="nav-tab" data-tab="tabCopilot">
+        <span>🤖</span> Claude Copilot (30 Skills)
+      </button>
       <button class="nav-tab" data-tab="tabChart">
         <span>📈</span> Chart Studio (VWAP)
       </button>
@@ -152,6 +155,22 @@
           <span>3. 5-Min Re-tests</span>
           <span>4. Value Zones</span>
           <span>5. Strict 1.5% Sizing</span>
+        </div>
+      </div>
+
+      <!-- Claude Copilot Quick Callout Banner -->
+      <div style="background: linear-gradient(90deg, rgba(59,130,246,0.1) 0%, rgba(16,185,129,0.08) 100%); border:1px solid rgba(59,130,246,0.3); border-radius:var(--radius-sm); padding:0.75rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <span style="font-size:1.3rem;">🤖</span>
+          <div>
+            <div style="font-weight:700; font-size:0.88rem; color:#f8fafc;">Need advice on a specific stock or stop-loss?</div>
+            <div style="font-size:0.78rem; color:#94a3b8;">Claude Copilot is online with 30 Claude Code trading skills to analyze risk and simulate paper trades.</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.75rem;" onclick="window.askCopilotPrompt('Safest stock for ₹1000 capital right now')">⚡ Safest for ₹1,000</button>
+          <button class="btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.75rem;" onclick="window.askCopilotPrompt('Where to place stop loss for PNB')">🛡️ PNB Stop Loss</button>
+          <button class="btn-primary" style="font-size:0.78rem; padding:0.4rem 0.85rem;" onclick="document.querySelector('[data-tab=\'tabCopilot\']').click()">Open Claude Copilot ➔</button>
         </div>
       </div>
 
@@ -476,6 +495,71 @@
       </div>
     </section>
 
+    <!-- TAB 6: CLAUDE TRADING COPILOT -->
+    <section id="tabCopilot" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>🤖</span> Claude Trading Copilot (30 Quant Skills)</h1>
+          <p class="section-subtitle">Ask anything about NSE stocks, stop-loss calculations, liquidity traps, or sizing. Powered by the 30 installed Claude Code trading skills.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <span style="font-size:0.75rem; background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:4px 10px; border-radius:9999px; font-weight:700;">
+            ✓ 30 SKILLS ONLINE
+          </span>
+          <span style="font-size:0.75rem; background:rgba(59, 130, 246, 0.15); color:#38bdf8; border:1px solid rgba(59, 130, 246, 0.3); padding:4px 10px; border-radius:9999px; font-weight:700;">
+            🛡️ ₹1,000 CAPITAL GUARD
+          </span>
+        </div>
+      </div>
+
+      <div class="copilot-container">
+        <!-- Quick Prompts Chips -->
+        <div class="copilot-chips-wrap">
+          <button class="copilot-chip" data-prompt="Safest stock for ₹1000 capital right now">⚡ Safest Stock for ₹1,000</button>
+          <button class="copilot-chip" data-prompt="Where to place stop loss for PNB">🛡️ PNB Stop-Loss Strategy</button>
+          <button class="copilot-chip" data-prompt="Analyze Canara Bank CANBK with VWAP setup">📉 Canara Bank (CANBK) Setup</button>
+          <button class="copilot-chip" data-prompt="Why did the PNB morning breakout trade fail?">⚠️ Why Breakouts Fail (PNB Post-Mortem)</button>
+          <button class="copilot-chip" data-prompt="Analyze Tata Steel position sizing and entry">🎯 Tata Steel Setup</button>
+          <button class="copilot-chip" data-prompt="Show all 30 installed Claude Code skills">📦 View 30 Installed Skills</button>
+          <button class="copilot-chip" data-prompt="What are the 4 institutional rules to never lose capital?">🛡️ The 4 Working Rules</button>
+        </div>
+
+        <!-- Chat Stream -->
+        <div id="copilotChatStream" class="copilot-chat-stream">
+          <!-- Initial Assistant Message -->
+          <div class="chat-bubble assistant">
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+              <span style="font-size:1.1rem;">🤖</span>
+              <strong style="color:#38bdf8;">Claude Trading Copilot</strong>
+              <span style="font-size:0.7rem; background:rgba(59,130,246,0.2); color:#93c5fd; padding:1px 6px; border-radius:3px;">nse-trading-toolkit</span>
+            </div>
+            <p>
+              Welcome! I am your embedded Claude Trading Copilot. I run the logic of the <strong>30 installed Claude Code trading skills</strong> (including <code>stop-loss-strategies</code>, <code>position-sizing</code>, <code>technical-analysis</code>, and <code>drawdown-circuit-breaker</code>) directly in your browser.
+            </p>
+            <p style="margin-top:0.4rem;">
+              Your account is configured for <strong>₹1,000 capital</strong> with strict safety guardrails:
+            </p>
+            <ul style="margin:0.4rem 0 0.4rem 1.25rem; font-size:0.82rem; color:#cbd5e1; line-height:1.6;">
+              <li><strong>Max Risk Per Trade:</strong> Strictly capped at ₹15 (1.5% max account risk).</li>
+              <li><strong>Execution Model:</strong> Institutional VWAP Pullbacks only — <em>never</em> chase morning green spikes.</li>
+              <li><strong>Paper Verification:</strong> Every recommendation can be executed in the Paper Trading Terminal with 1 click to test safely before risking real money.</li>
+            </ul>
+            <p style="margin-top:0.4rem; color:#94a3b8; font-size:0.8rem;">
+              Click any quick prompt above or type any stock symbol below to get an instant quant analysis and verified paper trade ticket!
+            </p>
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <form id="copilotForm" class="copilot-input-bar">
+          <input type="text" id="copilotInput" placeholder="Ask Claude Copilot... (e.g. 'Analyze Canara Bank for 1000 rs', 'Where to set stop loss for PNB')" autocomplete="off">
+          <button type="submit" class="btn-primary" style="white-space:nowrap;">
+            <span>⚡</span> Ask Copilot
+          </button>
+        </form>
+      </div>
+    </section>
+
   </main>
 
   <!-- Toast Notification Container -->
@@ -484,6 +568,7 @@
   <!-- Application Scripts -->
   <script src="js/data.js"></script>
   <script src="js/indicators.js"></script>
+  <script src="js/assistant.js"></script>
   <script src="js/backtester.js"></script>
   <script src="js/scanner.js"></script>
   <script src="js/chart.js"></script>

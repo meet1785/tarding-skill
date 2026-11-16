@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupChartControls();
   setupPaperTradingForm();
   setupBacktester();
+  setupCopilot();
 
   runScan();
 
@@ -457,4 +458,73 @@ function runBacktestUI() {
       </tr>
     `).join("");
   }
+}
+
+// Setup Claude Copilot AI Assistant
+function setupCopilot() {
+  const form = document.getElementById("copilotForm");
+  const input = document.getElementById("copilotInput");
+  const stream = document.getElementById("copilotChatStream");
+  const chips = document.querySelectorAll(".copilot-chip");
+
+  if (!form || !input || !stream) return;
+
+  function askCopilot(query) {
+    if (!query || !query.trim()) return;
+    const capital = parseFloat(document.getElementById("inputCapital")?.value || 1000);
+
+    // Append user message
+    const userMsg = document.createElement("div");
+    userMsg.className = "chat-bubble user";
+    userMsg.innerText = query;
+    stream.appendChild(userMsg);
+    stream.scrollTop = stream.scrollHeight;
+
+    // Simulate short quant processing delay
+    const typingMsg = document.createElement("div");
+    typingMsg.className = "chat-bubble assistant";
+    typingMsg.id = "copilotTyping";
+    typingMsg.innerHTML = `
+      <div style="display:flex; align-items:center; gap:0.4rem; color:#94a3b8; font-size:0.8rem;">
+        <span class="pulse-dot" style="background:#38bdf8;"></span>
+        <span>Claude Code Skills running technical-analysis & stop-loss-strategies...</span>
+      </div>
+    `;
+    stream.appendChild(typingMsg);
+    stream.scrollTop = stream.scrollHeight;
+
+    setTimeout(() => {
+      const el = document.getElementById("copilotTyping");
+      if (el) el.remove();
+
+      const responseHtml = window.ClaudeCopilot.analyzeQuery(query, capital);
+      const assistantMsg = document.createElement("div");
+      assistantMsg.className = "chat-bubble assistant";
+      assistantMsg.innerHTML = responseHtml;
+      stream.appendChild(assistantMsg);
+      stream.scrollTop = stream.scrollHeight;
+    }, 350);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = input.value;
+    input.value = "";
+    askCopilot(q);
+  });
+
+  chips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      const prompt = chip.getAttribute("data-prompt");
+      askCopilot(prompt);
+    });
+  });
+
+  window.askCopilotPrompt = function(promptText) {
+    const copilotTabBtn = document.querySelector('[data-tab="tabCopilot"]');
+    if (copilotTabBtn) copilotTabBtn.click();
+    setTimeout(() => {
+      askCopilot(promptText);
+    }, 150);
+  };
 }
