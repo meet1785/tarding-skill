@@ -416,6 +416,13 @@ function setupPaperTradingForm() {
     });
   }
 
+  const autoBotBtn = document.getElementById("btnToggleAutoBot");
+  if (autoBotBtn) {
+    autoBotBtn.addEventListener("click", () => {
+      window.paperEngine.toggleAutonomousBot();
+    });
+  }
+
   function updateGeminiStatusUI() {
     const el = document.getElementById("btnGeminiStatus");
     if (!el || !window.GeminiAI) return;

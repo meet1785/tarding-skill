@@ -17,6 +17,8 @@ class PaperTradingEngine {
     this.learningNotes = [];
     this.consecutiveLosses = 0;
     this.dailyDrawdownHalt = false;
+    this.autoBotActive = false;
+    this.botTimer = null;
     this.loadState();
 
     // Listen to live ticks to update P&L and trigger SL/Target
@@ -157,6 +159,60 @@ class PaperTradingEngine {
 
     if (window.showToast) {
       window.showToast("Replayed 16-Nov market session: 4 trades, 75% Win Rate, Net P&L: +₹44.94", "success");
+    }
+  }
+
+  // Toggle Autonomous Bot Mode for next 4 days
+  toggleAutonomousBot() {
+    this.autoBotActive = !this.autoBotActive;
+    this.saveState();
+    this.renderAutoBotStatus();
+
+    if (this.autoBotActive) {
+      if (window.showToast) window.showToast("🤖 Autonomous Quant Bot ACTIVATED: Auto-evaluating live NSE A+ setups every 15m", "success");
+      this.runBotScanCycle();
+      this.botTimer = setInterval(() => this.runBotScanCycle(), 15 * 60 * 1000);
+    } else {
+      if (this.botTimer) clearInterval(this.botTimer);
+      if (window.showToast) window.showToast("Autonomous Quant Bot paused.", "info");
+    }
+  }
+
+  renderAutoBotStatus() {
+    const btn = document.getElementById("btnToggleAutoBot");
+    if (!btn) return;
+    if (this.autoBotActive) {
+      btn.innerHTML = `<span>🤖</span> Auto-Bot: ACTIVE (4 Days Live)`;
+      btn.style.background = "#10b981";
+      btn.style.color = "#ffffff";
+    } else {
+      btn.innerHTML = `<span>🤖</span> Enable Auto-Bot (4 Days)`;
+      btn.style.background = "var(--bg-secondary)";
+      btn.style.color = "var(--text-secondary)";
+    }
+  }
+
+  async runBotScanCycle() {
+    if (!this.autoBotActive || this.dailyDrawdownHalt) return;
+    if (this.positions.length >= 2) return;
+
+    if (window.ResearchScanner) {
+      const recs = await window.ResearchScanner.runResearch({ capital: this.initialCapital, leverage: 5, riskPct: 1.5 });
+      const best = recs.find(r => r.confluenceScore >= 85 && !r.tradeRating.includes("TRAP"));
+      if (best) {
+        const alreadyOpen = this.positions.some(p => p.symbol === best.symbol);
+        if (!alreadyOpen) {
+          this.executeTrade({
+            symbol: best.symbol,
+            action: "BUY",
+            type: "MIS",
+            quantity: best.sizing.shares,
+            price: best.entry,
+            stopLoss: best.stopLoss,
+            target: best.target1
+          });
+        }
+      }
     }
   }
 
@@ -404,6 +460,7 @@ class PaperTradingEngine {
 
   render() {
     this.renderPositionsOnly();
+    this.renderAutoBotStatus();
 
     // Circuit breaker warning banner
     const cbBanner = document.getElementById("circuitBreakerBanner");
