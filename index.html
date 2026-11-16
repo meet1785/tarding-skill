@@ -215,8 +215,10 @@
 
             <div class="indicator-toggle-group">
               <button class="ind-toggle-btn active" data-ind="vwap" style="background:#a855f7; border-color:#a855f7; color:white;">VWAP (Purple)</button>
-              <button class="ind-toggle-btn active" data-ind="ema9">EMA 9 (Cyan)</button>
-              <button class="ind-toggle-btn active" data-ind="ema21">EMA 21 (Orange)</button>
+              <button class="ind-toggle-btn active" data-ind="bands">VWAP Bands</button>
+              <button class="ind-toggle-btn active" data-ind="supertrend" style="background:#10b981; border-color:#10b981; color:white;">Supertrend (10,3)</button>
+              <button class="ind-toggle-btn" data-ind="ema9">EMA 9 (Cyan)</button>
+              <button class="ind-toggle-btn" data-ind="ema21">EMA 21 (Orange)</button>
             </div>
           </div>
 
@@ -234,6 +236,12 @@
             </div>
             <div style="margin-top:0.5rem; font-size:0.85rem; font-family:var(--font-mono);">
               VWAP Benchmark: <strong id="dossierVwap" style="color:#a855f7;">Calculating...</strong>
+            </div>
+            <div style="margin-top:0.4rem; font-size:0.85rem; font-family:var(--font-mono);">
+              Supertrend (10,3): <strong id="dossierSupertrend" style="color:#10b981;">Calculating...</strong>
+            </div>
+            <div style="margin-top:0.4rem; font-size:0.85rem; font-family:var(--font-mono);">
+              15m Opening Range: <strong id="dossierOrb" style="color:#f59e0b;">Calculating...</strong>
             </div>
           </div>
 
@@ -322,6 +330,18 @@
         <button id="btnResetAccount" class="btn-secondary">
           <span>🔄</span> Reset Capital
         </button>
+      </div>
+
+      <!-- Drawdown Circuit Breaker Warning Banner -->
+      <div id="circuitBreakerBanner" style="display:none; background:rgba(239, 68, 68, 0.12); border:1px solid #ef4444; border-radius:var(--radius-sm); padding:0.85rem 1.25rem; margin-bottom:1.25rem; color:#fca5a5;">
+        <div style="display:flex; align-items:center; gap:0.5rem; font-weight:800; font-size:0.95rem; color:#ef4444;">
+          <span>🛑</span> ACCOUNT DRAWDOWN CIRCUIT BREAKER ACTIVATED
+        </div>
+        <div style="font-size:0.82rem; margin-top:0.25rem; color:#cbd5e1;">
+          You have taken 2 consecutive losses or reached the daily drawdown limit (-₹30 on ₹1,000). 
+          Per the <code>drawdown-circuit-breaker</code> skill, all new orders are locked for today to protect remaining capital. 
+          Step away, review the learning debriefs, and trade fresh tomorrow.
+        </div>
       </div>
 
       <div class="portfolio-summary-grid">
@@ -438,7 +458,9 @@
                   <th>Qty</th>
                   <th>Entry</th>
                   <th>Exit</th>
-                  <th>Realized P&L</th>
+                  <th>Gross P&L</th>
+                  <th>Taxes & Charges</th>
+                  <th>Net Realized P&L</th>
                   <th>Exit Reason</th>
                 </tr>
               </thead>

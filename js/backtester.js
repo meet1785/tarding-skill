@@ -1,12 +1,12 @@
 /**
- * TradeMind AI - Quantitative Strategy Backtester (based on backtest-expert skill)
+ * TradeMind AI - Quantitative Strategy Backtester (v3)
  * Statistically verifies trading strategies on historical NSE candles,
- * proving why breakout chasing fails and why VWAP pullbacks create an edge.
+ * proving why breakout chasing fails and why Supertrend + VWAP Confluence creates an edge.
  */
 
 const StrategyBacktester = {
   // Run backtest over historical candles for a symbol
-  runBacktest(symbol = "PNB", strategyType = "vwap_pullback", capital = 1000, riskPct = 1.5) {
+  runBacktest(symbol = "PNB", strategyType = "supertrend_vwap_confluence", capital = 1000, riskPct = 1.5) {
     const candles = window.MarketData.getCandles(symbol, 60);
     const trades = [];
     let currentBalance = capital;
@@ -16,12 +16,17 @@ const StrategyBacktester = {
     const vwapData = window.Indicators.calculateVWAP(candles);
     const vwap = vwapData.vwap;
     const atrArr = window.Indicators.calculateATR(candles, 14);
+    const stData = window.Indicators.calculateSupertrend(candles, 10, 3);
+    const stValues = stData.supertrend;
+    const stDirs = stData.direction;
 
     for (let i = 20; i < candles.length - 1; i++) {
       const c = candles[i];
       const prev = candles[i - 1];
       const currentVwap = vwap[i];
       const currentAtr = atrArr[i] || 3.0;
+      const currentSt = stValues[i] || currentVwap;
+      const currentStDir = stDirs[i] || 1;
 
       let entryPrice = 0;
       let stopLoss = 0;
@@ -38,15 +43,29 @@ const StrategyBacktester = {
           stopLoss = entryPrice - currentAtr * 1.5;
           target = entryPrice + currentAtr * 1.5;
         }
+      } else if (strategyType === "supertrend_vwap_confluence") {
+        // Institutional Confluence Rule: Supertrend is Green AND Price bounces off VWAP
+        const isBullishST = currentStDir === 1;
+        const aboveVwap = c.close >= currentVwap;
+        const nearVwap = Math.abs(c.low - currentVwap) / currentVwap <= 0.015;
+        const bullishBounce = c.close > c.open;
+
+        if (isBullishST && aboveVwap && nearVwap && bullishBounce) {
+          isTrade = true;
+          entryPrice = c.close;
+          stopLoss = Math.min(currentVwap, currentSt) - 0.3 * currentAtr;
+          const risk = entryPrice - stopLoss;
+          target = entryPrice + risk * 2.2; // 2.2:1 R:R
+        }
       } else if (strategyType === "vwap_pullback") {
-        // Institutional Quant Rule: Buy when price pulls back to VWAP and bounces
+        // Standard VWAP Pullback
         const touchVwap = prev.low <= currentVwap && prev.close >= currentVwap;
         const bullishBounce = c.close > currentVwap && c.close > c.open;
         if (touchVwap && bullishBounce) {
           isTrade = true;
           entryPrice = c.close;
-          stopLoss = currentVwap - 0.4 * currentAtr; // Tight stop right under VWAP
-          target = entryPrice + (entryPrice - stopLoss) * 2.0; // 2:1 R:R
+          stopLoss = currentVwap - 0.4 * currentAtr;
+          target = entryPrice + (entryPrice - stopLoss) * 2.0;
         }
       } else if (strategyType === "turtle_soup_fade") {
         // Linda Raschke's Fakeout Fade: Short failed 10-day breakout
@@ -90,9 +109,9 @@ const StrategyBacktester = {
           }
         }
 
-        const riskPerShare = Math.abs(entryPrice - stopLoss);
+        const riskPerShare = Math.max(Math.abs(entryPrice - stopLoss), 0.1);
         const maxRiskAmount = currentBalance * (riskPct / 100);
-        const shares = Math.max(Math.floor(maxRiskAmount / Math.max(riskPerShare, 0.1)), 1);
+        const shares = Math.max(Math.floor(maxRiskAmount / riskPerShare), 1);
 
         const diff = action === "BUY" ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
         const pnl = Math.round(diff * shares * 100) / 100;
@@ -123,6 +142,10 @@ const StrategyBacktester = {
     const totalLosses = Math.abs(losses.reduce((sum, t) => sum + t.pnl, 0));
     const profitFactor = totalLosses > 0 ? Math.round((totalGains / totalLosses) * 100) / 100 : (totalGains > 0 ? 99 : 0);
 
+    const avgWin = wins.length > 0 ? totalGains / wins.length : 0;
+    const avgLoss = losses.length > 0 ? totalLosses / losses.length : 0;
+    const expectancy = Math.round(((winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss) * 100) / 100;
+
     return {
       symbol,
       strategyType,
@@ -131,10 +154,11 @@ const StrategyBacktester = {
       losses: losses.length,
       winRate,
       profitFactor,
+      expectancy,
       netPnL: Math.round((currentBalance - capital) * 100) / 100,
       finalBalance: Math.round(currentBalance * 100) / 100,
       maxDrawdownPct: Math.round(maxDrawdown * 10) / 10,
-      trades: trades.slice(-10) // last 10 trades
+      trades: trades.slice(-10)
     };
   }
 };

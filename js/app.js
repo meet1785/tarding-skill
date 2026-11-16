@@ -1,5 +1,5 @@
 /**
- * TradeMind AI - Main Application Controller (v2 with Institutional Backtest Lab)
+ * TradeMind AI - Main Application Controller (v3 with Supertrend & Confluence Engine)
  * Handles user interactions, tab switching, recommendations rendering, backtesting, and toast alerts.
  */
 
@@ -24,6 +24,26 @@ document.addEventListener("DOMContentLoaded", () => {
     runBacktestUI();
   }, 100);
 });
+
+// Subtle audio chime for verified setups
+function playNotificationChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+}
 
 // Toast notification helper
 window.showToast = function(message, type = "info") {
@@ -130,9 +150,9 @@ function setupTabs() {
 
 // Scanner Controls
 function setupScanner() {
-  const scanBtn = document.getElementById("btnRunScan");
-  if (scanBtn) {
-    scanBtn.addEventListener("click", () => {
+  const btnRun = document.getElementById("btnRunScan");
+  if (btnRun) {
+    btnRun.addEventListener("click", () => {
       runScan();
     });
   }
@@ -141,8 +161,10 @@ function setupScanner() {
     btn.addEventListener("click", () => {
       const cap = btn.getAttribute("data-cap");
       const input = document.getElementById("inputCapital");
-      if (input) input.value = cap;
-      runScan();
+      if (input) {
+        input.value = cap;
+        runScan();
+      }
     });
   });
 }
@@ -177,7 +199,10 @@ async function runScan() {
     if (progressCard) progressCard.classList.remove("active");
     if (btn) btn.disabled = false;
     renderRecommendations(results, capital, leverage);
-  }, 400);
+
+    const hasAplus = results.some(r => r.confluenceScore >= 85);
+    if (hasAplus) playNotificationChime();
+  }, 350);
 }
 
 function renderRecommendations(recommendations, capital, leverage) {
@@ -205,7 +230,7 @@ function renderRecommendations(recommendations, capital, leverage) {
           <div class="sym-name-group">
             <div class="sym-title">
               ${rec.symbol}
-              ${isTop ? '<span class="sym-badge" style="background:#2563eb; color:#fff; font-weight:700;">A+ QUANT PICK</span>' : ''}
+              ${isTop ? '<span class="sym-badge" style="background:#2563eb; color:#fff; font-weight:700;">⭐ A+ CONFLUENCE PICK</span>' : ''}
               ${isTrap ? '<span class="sym-badge" style="background:#ef4444; color:#fff; font-weight:700;">⚠️ LIQUIDITY TRAP</span>' : ''}
             </div>
             <div class="sym-sector">${rec.name} • ${rec.sector}</div>
@@ -239,28 +264,34 @@ function renderRecommendations(recommendations, capital, leverage) {
               <span class="ticket-value sl">₹${rec.stopLoss.toFixed(2)}</span>
             </div>
             <div class="ticket-row">
-              <span class="ticket-label">TARGET 1</span>
+              <span class="ticket-label">TARGET 1 (1:2 R:R)</span>
               <span class="ticket-value tgt">₹${rec.target1.toFixed(2)} <small>(+₹${rec.profitT1})</small></span>
             </div>
             <div class="ticket-row">
-              <span class="ticket-label">TARGET 2</span>
+              <span class="ticket-label">TARGET 2 (RUNNER)</span>
               <span class="ticket-value tgt">₹${rec.target2.toFixed(2)} <small>(+₹${rec.profitT2})</small></span>
             </div>
           </div>
 
+          <!-- Position Sizing & Realistic Taxes Box -->
           <div style="background:var(--bg-primary); padding:0.65rem 0.85rem; border-radius:6px; font-size:0.78rem; font-family:var(--font-mono); border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
               <span style="color:#94a3b8;">Sizing (₹${capital.toLocaleString()} @ ${leverage}x):</span>
               <strong style="color:#38bdf8;">${rec.sizing.shares} shares</strong>
             </div>
-            <div style="display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
               <span style="color:#94a3b8;">Max Risk / Margin:</span>
               <span style="color:${rec.sizing.riskAmount <= 15 ? '#10b981' : '#f59e0b'};">₹${rec.sizing.riskAmount} / ₹${rec.sizing.marginRequired}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(255,255,255,0.08); padding-top:3px; margin-top:3px;">
+              <span style="color:#94a3b8;">Net Profit (after NSE taxes):</span>
+              <strong style="color:#10b981;">+₹${rec.netProfitT1}</strong>
             </div>
           </div>
 
           <div class="indicators-strip">
             <span>VWAP: <strong>₹${rec.vwap.toFixed(2)}</strong></span>
+            <span>ST: <strong style="color:${rec.supertrendDir === 1 ? '#10b981' : '#ef4444'}">₹${rec.supertrend.toFixed(1)}</strong></span>
             <span>RSI: <strong>${rec.rsi}</strong></span>
             <span>R:R: <strong>1:${rec.riskRewardRatio}</strong></span>
           </div>
@@ -268,7 +299,7 @@ function renderRecommendations(recommendations, capital, leverage) {
 
         <div class="trade-card-footer">
           <button class="btn-secondary" onclick="viewInChart('${rec.symbol}')">
-            <span>📈</span> Inspect VWAP
+            <span>📈</span> Inspect Chart
           </button>
           <button class="btn-primary" style="${isTrap ? 'background: #334155; opacity:0.8;' : ''}" onclick="oneClickPaperTrade('${rec.symbol}', ${rec.sizing.shares}, ${rec.entry}, ${rec.stopLoss}, ${rec.target1})">
             <span>⚡</span> ${isTrap ? 'Paper Trade Pullback' : '1-Click Paper Trade'}
@@ -279,19 +310,10 @@ function renderRecommendations(recommendations, capital, leverage) {
   }).join("");
 }
 
-window.viewInChart = function(symbol) {
-  const chartTab = document.querySelector('[data-tab="tabChart"]');
-  if (chartTab) chartTab.click();
-
-  const symSelect = document.getElementById("selectChartSymbol");
-  if (symSelect) symSelect.value = symbol;
-
-  if (window.chartStudio) {
-    window.chartStudio.loadSymbol(symbol);
-  }
-};
-
+// 1-Click Paper Trade execution
 window.oneClickPaperTrade = function(symbol, quantity, entryPrice, stopLoss, target) {
+  if (!window.paperEngine) return;
+
   const result = window.paperEngine.executeTrade({
     symbol,
     action: "BUY",
@@ -308,6 +330,17 @@ window.oneClickPaperTrade = function(symbol, quantity, entryPrice, stopLoss, tar
     if (paperTab) paperTab.click();
   } else {
     window.showToast(result.message, "error");
+  }
+};
+
+window.viewInChart = function(symbol) {
+  const chartTabBtn = document.querySelector('[data-tab="tabChart"]');
+  if (chartTabBtn) chartTabBtn.click();
+
+  const sel = document.getElementById("selectChartSymbol");
+  if (sel) {
+    sel.value = symbol;
+    sel.dispatchEvent(new Event("change"));
   }
 };
 
@@ -377,7 +410,7 @@ function setupPaperTradingForm() {
   }
 }
 
-// Strategy Lab / Backtester UI
+// Strategy Lab / Backtester UI (v3 with Supertrend + VWAP Confluence)
 function setupBacktester() {
   const runBtn = document.getElementById("btnRunBacktest");
   if (runBtn) {
@@ -391,10 +424,11 @@ function runBacktestUI() {
   const sym = document.getElementById("selectBacktestSymbol")?.value || "PNB";
   const capital = parseFloat(document.getElementById("inputCapital")?.value || 1000);
 
-  // Compare all 3 strategies
+  // Compare all 4 strategies
   const stratA = window.StrategyBacktester.runBacktest(sym, "breakout_chasing", capital, 1.5);
   const stratB = window.StrategyBacktester.runBacktest(sym, "vwap_pullback", capital, 1.5);
-  const stratC = window.StrategyBacktester.runBacktest(sym, "turtle_soup_fade", capital, 1.5);
+  const stratC = window.StrategyBacktester.runBacktest(sym, "supertrend_vwap_confluence", capital, 1.5);
+  const stratD = window.StrategyBacktester.runBacktest(sym, "turtle_soup_fade", capital, 1.5);
 
   const container = document.getElementById("backtestResultsGrid");
   if (!container) return;
@@ -405,7 +439,7 @@ function runBacktestUI() {
       <div style="font-size:0.8rem; font-weight:700; color:#ef4444; margin-bottom:0.25rem;">
         Strategy 1: Chasing Morning Breakouts (Flawed)
       </div>
-      <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Buying 5-day highs blindly at open</div>
+      <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Buying 5-day highs blindly at 9:15 AM open</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-family:var(--font-mono); font-size:0.85rem;">
         <div>Win Rate: <strong style="color:#ef4444;">${stratA.winRate}%</strong></div>
         <div>Profit Factor: <strong>${stratA.profitFactor}</strong></div>
@@ -415,30 +449,44 @@ function runBacktestUI() {
     </div>
 
     <!-- Strategy B: VWAP Pullback -->
-    <div class="stat-box" style="border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.04);">
-      <div style="font-size:0.8rem; font-weight:700; color:#10b981; margin-bottom:0.25rem;">
-        Strategy 2: VWAP Pullback Rejection (Institutional)
+    <div class="stat-box" style="border-left: 4px solid #3b82f6;">
+      <div style="font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:0.25rem;">
+        Strategy 2: VWAP Pullback Re-Test
       </div>
-      <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Buying re-tests at VWAP with tight SL</div>
+      <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Buying dips at VWAP with tight 0.4× ATR stop</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-family:var(--font-mono); font-size:0.85rem;">
-        <div>Win Rate: <strong style="color:#10b981;">${stratB.winRate}%</strong></div>
-        <div>Profit Factor: <strong style="color:#10b981;">${stratB.profitFactor}</strong></div>
+        <div>Win Rate: <strong style="color:#38bdf8;">${stratB.winRate}%</strong></div>
+        <div>Profit Factor: <strong>${stratB.profitFactor}</strong></div>
         <div>Max Drawdown: <strong>-${stratB.maxDrawdownPct}%</strong></div>
-        <div>Net P&L: <strong style="color:#10b981;">+₹${stratB.netPnL}</strong></div>
+        <div>Net P&L: <strong style="color:#38bdf8;">+₹${stratB.netPnL}</strong></div>
       </div>
     </div>
 
-    <!-- Strategy C: Fade the Fakeout -->
+    <!-- Strategy C: Supertrend + VWAP Confluence (Top Tier) -->
+    <div class="stat-box" style="border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.05);">
+      <div style="font-size:0.8rem; font-weight:700; color:#10b981; margin-bottom:0.25rem;">
+        ⭐ Strategy 3: Supertrend (10,3) + VWAP Confluence
+      </div>
+      <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Supertrend Bullish + VWAP bounce confirmation</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-family:var(--font-mono); font-size:0.85rem;">
+        <div>Win Rate: <strong style="color:#10b981;">${stratC.winRate}%</strong></div>
+        <div>Profit Factor: <strong style="color:#10b981;">${stratC.profitFactor}</strong></div>
+        <div>Expectancy: <strong style="color:#10b981;">+₹${stratC.expectancy}/trade</strong></div>
+        <div>Net P&L: <strong style="color:#10b981;">+₹${stratC.netPnL}</strong></div>
+      </div>
+    </div>
+
+    <!-- Strategy D: Fade the Fakeout -->
     <div class="stat-box" style="border-left: 4px solid #06b6d4;">
       <div style="font-size:0.8rem; font-weight:700; color:#06b6d4; margin-bottom:0.25rem;">
-        Strategy 3: Turtle Soup Fakeout Fade
+        Strategy 4: Turtle Soup Fakeout Fade
       </div>
       <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Shorting failed morning surges back to VWAP</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-family:var(--font-mono); font-size:0.85rem;">
-        <div>Win Rate: <strong style="color:#06b6d4;">${stratC.winRate}%</strong></div>
-        <div>Profit Factor: <strong>${stratC.profitFactor}</strong></div>
-        <div>Max Drawdown: <strong>-${stratC.maxDrawdownPct}%</strong></div>
-        <div>Net P&L: <strong style="color:${stratC.netPnL >= 0 ? '#10b981' : '#ef4444'};">${stratC.netPnL >= 0 ? '+' : ''}₹${stratC.netPnL}</strong></div>
+        <div>Win Rate: <strong style="color:#06b6d4;">${stratD.winRate}%</strong></div>
+        <div>Profit Factor: <strong>${stratD.profitFactor}</strong></div>
+        <div>Max Drawdown: <strong>-${stratD.maxDrawdownPct}%</strong></div>
+        <div>Net P&L: <strong style="color:${stratD.netPnL >= 0 ? '#10b981' : '#ef4444'};">${stratD.netPnL >= 0 ? '+' : ''}₹${stratD.netPnL}</strong></div>
       </div>
     </div>
   `;
@@ -446,7 +494,7 @@ function runBacktestUI() {
   // Render recent backtest trades log
   const logTable = document.getElementById("backtestTradesTableBody");
   if (logTable) {
-    logTable.innerHTML = stratB.trades.map(t => `
+    logTable.innerHTML = stratC.trades.map(t => `
       <tr>
         <td>${t.date}</td>
         <td><strong>${t.symbol}</strong></td>
@@ -487,7 +535,7 @@ function setupCopilot() {
     typingMsg.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.4rem; color:#94a3b8; font-size:0.8rem;">
         <span class="pulse-dot" style="background:#38bdf8;"></span>
-        <span>Claude Code Skills running technical-analysis & stop-loss-strategies...</span>
+        <span>Claude Code running supertrend, technical-analysis & tax calculations...</span>
       </div>
     `;
     stream.appendChild(typingMsg);
@@ -503,7 +551,7 @@ function setupCopilot() {
       assistantMsg.innerHTML = responseHtml;
       stream.appendChild(assistantMsg);
       stream.scrollTop = stream.scrollHeight;
-    }, 350);
+    }, 320);
   }
 
   form.addEventListener("submit", (e) => {

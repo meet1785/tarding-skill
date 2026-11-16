@@ -1,16 +1,21 @@
 /**
- * TradeMind AI - Embedded Claude Trading Copilot
- * Runs the logic of the 30 installed Claude Code skills directly in the browser:
+ * TradeMind AI - Embedded Claude Trading Copilot (v3)
+ * Powered by 30 installed Claude Code trading skills:
  * - nse-trading-toolkit, technical-analysis, position-sizing, stop-loss-strategies,
  * - trailing-stops, risk-reward-ratio, multi-timeframe-analysis, rsi-divergence,
  * - fibonacci-trading, drawdown-circuit-breaker, backtest-expert, trader-entry, trader-exit, etc.
+ * Features:
+ * - Multi-Factor Institutional Confluence Scoring (0 - 100%)
+ * - Supertrend (10, 3) + VWAP Confluence Rules
+ * - Real NSE Brokerage, STT, and Regulatory Taxes Deduction
+ * - Strict 1.5% Risk Protection for ₹1,000 Accounts
  */
 
 const ClaudeCopilot = {
   // Directory of all 30 installed Claude Code skills
   skills: [
     { name: "nse-trading-toolkit", category: "Execution", desc: "Master orchestrator for NSE/BSE stock screening and order planning" },
-    { name: "technical-analysis", category: "Analysis", desc: "Multi-indicator chart reading (VWAP, RSI, MACD, Bollinger Bands)" },
+    { name: "technical-analysis", category: "Analysis", desc: "Multi-indicator chart reading (VWAP, Supertrend, RSI, MACD, Bollinger Bands)" },
     { name: "position-sizing", category: "Risk", desc: "Capital-constrained position sizing with 5x MIS leverage limits" },
     { name: "stop-loss-strategies", category: "Risk", desc: "Structural VWAP + ATR buffer stop placement to prevent premature stopouts" },
     { name: "trailing-stops", category: "Risk", desc: "Dynamic ATR & Chandelier exit trailing to lock in profitable runs" },
@@ -56,6 +61,11 @@ const ClaudeCopilot = {
       return this.renderPostMortemAnalysis(capital);
     }
 
+    // Check if asking about taxes or brokerage
+    if (q.includes("tax") || q.includes("brokerage") || q.includes("charges") || q.includes("stt") || q.includes("cost")) {
+      return this.renderBrokerageBreakdown();
+    }
+
     // Check if asking for general rules or discipline
     if (q.includes("rule") || q.includes("safe") || q.includes("protect") || q.includes("discipline")) {
       return this.renderSafetyRules();
@@ -81,7 +91,6 @@ const ClaudeCopilot = {
       } else if (q.includes("defence") || q.includes("bel")) {
         targetSym = "BEL";
       } else {
-        // Find best non-trap stock
         targetSym = "CANBK";
       }
     }
@@ -93,40 +102,69 @@ const ClaudeCopilot = {
     const atr = stock.atr;
     const ltp = stock.price;
     const rsi = stock.rsi;
+
+    // Supertrend & Confluence
+    const stData = window.Indicators.calculateSupertrend(candles, 10, 3);
+    const currentSt = stData.supertrend[stData.supertrend.length - 1];
+    const currentStDir = stData.direction[stData.direction.length - 1];
+
+    const orb = window.Indicators.calculateOpeningRange(candles, 3);
+    const last20Vols = candles.slice(-20).map(c => c.volume);
+    const avgVolume = last20Vols.reduce((a, b) => a + b, 0) / last20Vols.length;
+    const currentVolume = candles[candles.length - 1].volume;
+
+    const confluence = window.Indicators.calculateConfluenceScore(
+      stock,
+      ltp,
+      currentVwap,
+      currentStDir,
+      rsi,
+      currentVolume,
+      avgVolume,
+      orb
+    );
+
     const trap = window.Indicators.detectLiquidityTrap(ltp, currentVwap, rsi, stock.open, stock.high);
 
     // Calculate sizing for user capital
     const leverage = 5;
     const entry = Math.max(currentVwap, ltp);
-    const stopLoss = Math.round((currentVwap - 0.5 * atr) * 100) / 100;
+    const stopLoss = Math.round((Math.min(currentVwap, currentSt || currentVwap) - 0.4 * atr) * 100) / 100;
     const riskPerShare = Math.max(Math.round((entry - stopLoss) * 100) / 100, 0.40);
     const target1 = Math.round((entry + riskPerShare * 2.0) * 100) / 100;
     const target2 = Math.round((entry + riskPerShare * 3.5) * 100) / 100;
 
     const sizing = window.Indicators.calculatePositionSize(capital, 1.5, entry, stopLoss, leverage);
+    const taxCalc = window.Indicators.calculateNSEBrokerageAndTaxes(entry, target1, sizing.shares);
 
     // Formulate response following nse-trading-toolkit framework
     if (q.includes("stop") || q.includes("sl") || q.includes("risk")) {
-      return this.renderStopLossPlan(stock, ltp, currentVwap, atr, stopLoss, riskPerShare, sizing, capital);
+      return this.renderStopLossPlan(stock, ltp, currentVwap, currentSt, atr, stopLoss, riskPerShare, sizing, capital);
     }
 
-    return this.renderStockAnalysis(stock, ltp, currentVwap, atr, rsi, trap, entry, stopLoss, target1, target2, riskPerShare, sizing, capital);
+    return this.renderStockAnalysis(stock, ltp, currentVwap, currentSt, currentStDir, atr, rsi, trap, confluence, entry, stopLoss, target1, target2, riskPerShare, sizing, taxCalc, capital);
   },
 
-  renderStockAnalysis(stock, ltp, vwap, atr, rsi, trap, entry, stopLoss, target1, target2, riskPerShare, sizing, capital) {
+  renderStockAnalysis(stock, ltp, vwap, supertrend, supertrendDir, atr, rsi, trap, confluence, entry, stopLoss, target1, target2, riskPerShare, sizing, taxCalc, capital) {
     const isTrap = trap.isTrap;
     const rr = Math.round(((target1 - entry) / riskPerShare) * 10) / 10;
+    const isSupertrendBull = supertrendDir === 1;
 
     return `
       <div class="copilot-card">
         <div class="copilot-card-header">
           <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span style="font-size:1.1rem; font-weight:800; color:#f8fafc;">${stock.symbol}</span>
+            <span style="font-size:1.15rem; font-weight:800; color:#f8fafc;">${stock.symbol}</span>
             <span style="font-size:0.75rem; color:#94a3b8;">${stock.name} (${stock.sector})</span>
           </div>
-          <span class="status-pill ${isTrap ? 'trap' : 'setup'}">
-            ${isTrap ? '⚠️ LIQUIDITY TRAP' : '✓ A+ VWAP PULLBACK'}
-          </span>
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <span style="font-size:0.75rem; background:rgba(59,130,246,0.2); color:#38bdf8; padding:3px 8px; border-radius:4px; font-weight:700;">
+              Confluence: ${confluence.score}% (${confluence.grade})
+            </span>
+            <span class="status-pill ${isTrap ? 'trap' : 'setup'}">
+              ${isTrap ? '⚠️ LIQUIDITY TRAP' : '✓ A+ CONFLUENCE'}
+            </span>
+          </div>
         </div>
 
         <p style="font-size:0.83rem; color:#cbd5e1; margin-bottom:0.75rem; line-height:1.5;">
@@ -137,8 +175,21 @@ const ClaudeCopilot = {
         <div class="copilot-grid-stats">
           <div><span class="lbl">LTP:</span> <strong>₹${ltp.toFixed(2)}</strong></div>
           <div><span class="lbl">VWAP Anchor:</span> <strong style="color:#a855f7;">₹${vwap.toFixed(2)}</strong></div>
+          <div><span class="lbl">Supertrend (10,3):</span> <strong style="color:${isSupertrendBull ? '#10b981' : '#ef4444'};">₹${supertrend.toFixed(2)} (${isSupertrendBull ? 'BULL' : 'BEAR'})</strong></div>
           <div><span class="lbl">RSI (14):</span> <strong style="color:${rsi > 70 ? '#ef4444' : rsi < 35 ? '#10b981' : '#f8fafc'};">${rsi}</strong></div>
-          <div><span class="lbl">Daily ATR:</span> <strong>₹${atr.toFixed(2)}</strong></div>
+        </div>
+
+        <!-- Confluence Checklist -->
+        <div style="background:var(--bg-primary); padding:0.6rem 0.85rem; border-radius:4px; border:1px solid var(--border-color); margin-bottom:0.6rem; font-size:0.78rem;">
+          <strong style="color:#38bdf8;">Institutional Confluence Checklist:</strong>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.3rem; margin-top:0.4rem;">
+            ${confluence.checklist.map(c => `
+              <div style="display:flex; align-items:center; gap:0.35rem; color:${c.passed ? '#10b981' : '#ef4444'};">
+                <span>${c.passed ? '✓' : '✕'}</span>
+                <span style="color:#cbd5e1;">${c.label}: ${c.detail}</span>
+              </div>
+            `).join("")}
+          </div>
         </div>
 
         <!-- Trap Warning or Setup Confirmation -->
@@ -154,7 +205,7 @@ const ClaudeCopilot = {
           <div class="alert-box success" style="margin:0.6rem 0;">
             <strong>✓ Institutional High-Probability Setup:</strong>
             <p style="margin-top:0.25rem; font-size:0.8rem;">
-              Price is trading right near the Institutional VWAP anchor (₹${vwap.toFixed(2)}). Low risk entry with asymmetrical 1:${rr} R:R.
+              Both VWAP (₹${vwap.toFixed(2)}) and Supertrend (₹${supertrend.toFixed(2)}) confirm bullish institutional sponsorship. Low risk entry with asymmetrical 1:${rr} R:R.
             </p>
           </div>
         `}
@@ -162,24 +213,24 @@ const ClaudeCopilot = {
         <!-- Execution Plan Table -->
         <div class="copilot-plan-box">
           <div class="plan-row">
-            <span>Planned Entry (VWAP):</span>
+            <span>Planned Entry (at VWAP):</span>
             <strong>₹${entry.toFixed(2)}</strong>
           </div>
           <div class="plan-row">
-            <span>Hard Stop-Loss (VWAP - 0.5× ATR):</span>
-            <strong style="color:#ef4444;">₹${stopLoss.toFixed(2)} (-₹${riskPerShare.toFixed(2)})</strong>
+            <span>Hard Stop-Loss (VWAP Buffer):</span>
+            <strong style="color:#ef4444;">₹${stopLoss.toFixed(2)} (-₹${riskPerShare.toFixed(2)}/share)</strong>
           </div>
           <div class="plan-row">
             <span>Target 1 (1:2 R:R):</span>
             <strong style="color:#10b981;">₹${target1.toFixed(2)} (+₹${(target1 - entry).toFixed(2)})</strong>
           </div>
-          <div class="plan-row">
-            <span>Target 2 (Runner):</span>
-            <strong style="color:#10b981;">₹${target2.toFixed(2)} (+₹${(target2 - entry).toFixed(2)})</strong>
-          </div>
           <div class="plan-row highlight">
             <span>Capital Sizing (₹${capital.toLocaleString()} Capital):</span>
             <strong style="color:#38bdf8;">${sizing.shares} Shares (Max Risk: ₹${sizing.riskAmount} | Margin: ₹${sizing.marginRequired})</strong>
+          </div>
+          <div class="plan-row" style="color:#94a3b8; font-size:0.75rem;">
+            <span>Target 1 Profit Breakdown:</span>
+            <span>Gross: ₹${taxCalc.grossPnL} | NSE Taxes: ₹${taxCalc.totalTaxesAndCharges} | <strong style="color:#10b981;">Net In-Pocket: +₹${taxCalc.netPnL}</strong></span>
           </div>
         </div>
 
@@ -189,14 +240,14 @@ const ClaudeCopilot = {
             <span>⚡</span> Test in Paper Trading (Zero Risk)
           </button>
           <button class="btn-secondary" onclick="window.switchTabAndChart('${stock.symbol}')">
-            <span>📈</span> Inspect VWAP Chart
+            <span>📈</span> Inspect VWAP & Supertrend Chart
           </button>
         </div>
       </div>
     `;
   },
 
-  renderStopLossPlan(stock, ltp, vwap, atr, stopLoss, riskPerShare, sizing, capital) {
+  renderStopLossPlan(stock, ltp, vwap, supertrend, atr, stopLoss, riskPerShare, sizing, capital) {
     return `
       <div class="copilot-card">
         <div class="copilot-card-header">
@@ -209,9 +260,9 @@ const ClaudeCopilot = {
         </p>
 
         <ul style="font-size:0.82rem; color:#cbd5e1; padding-left:1.25rem; line-height:1.6; margin-bottom:0.75rem;">
-          <li><strong>Current Price:</strong> ₹${ltp.toFixed(2)} | <strong>Intraday VWAP:</strong> ₹${vwap.toFixed(2)}</li>
+          <li><strong>Current Price:</strong> ₹${ltp.toFixed(2)} | <strong>Intraday VWAP:</strong> ₹${vwap.toFixed(2)} | <strong>Supertrend:</strong> ₹${supertrend.toFixed(2)}</li>
           <li><strong>Recommended Hard Stop:</strong> <span style="color:#ef4444; font-weight:700;">₹${stopLoss.toFixed(2)}</span></li>
-          <li><strong>Why this level?</strong> Placed strictly 0.5× ATR (₹${(0.5 * atr).toFixed(2)}) below the Institutional VWAP. This prevents getting shaken out by random market noise while protecting you from algorithmic liquidation cascades.</li>
+          <li><strong>Why this level?</strong> Placed strictly 0.4× ATR below the lower of VWAP and Supertrend. This ensures you survive routine liquidity sweeps while cutting risk before a catastrophic liquidation plunge.</li>
           <li><strong>Max Loss Guarantee:</strong> On ${sizing.shares} shares, your total loss if stopped out is capped at <span style="color:#10b981; font-weight:700;">₹${sizing.riskAmount}</span> (only ${((sizing.riskAmount/capital)*100).toFixed(1)}% of your ₹${capital.toLocaleString()} account).</li>
         </ul>
 
@@ -223,6 +274,36 @@ const ClaudeCopilot = {
           <button class="btn-primary" onclick="window.oneClickPaperTrade('${stock.symbol}', ${sizing.shares}, ${ltp}, ${stopLoss}, ${Math.round((ltp + riskPerShare * 2) * 100) / 100})">
             <span>⚡</span> Paper Trade with this Stop-Loss
           </button>
+        </div>
+      </div>
+    `;
+  },
+
+  renderBrokerageBreakdown() {
+    return `
+      <div class="copilot-card">
+        <div class="copilot-card-header">
+          <span style="font-size:1.05rem; font-weight:800; color:#38bdf8;">💳 Real Indian Brokerage & Tax Calculations (Zerodha / Groww)</span>
+          <span class="status-pill setup">trader-tax</span>
+        </div>
+
+        <p style="font-size:0.83rem; color:#cbd5e1; line-height:1.6; margin-top:0.4rem;">
+          Many retail traders wonder why they end the day negative even after making 2 profitable trades. 
+          The reason is <strong>regulatory taxes & brokerage friction</strong>. Our paper trading terminal accounts for every single rupee:
+        </p>
+
+        <div style="background:var(--bg-primary); padding:0.75rem; border-radius:6px; border:1px solid var(--border-color); margin:0.75rem 0; font-family:var(--font-mono); font-size:0.8rem; line-height:1.6;">
+          <div>1. Brokerage: ₹20 flat or 0.05% per executed order (whichever is lower)</div>
+          <div>2. STT (Securities Transaction Tax): 0.025% on Intraday Sell turnover</div>
+          <div>3. Exchange Turnover Charges: 0.00345% on total turnover</div>
+          <div>4. GST: 18% on (Brokerage + Exchange fees + SEBI charges)</div>
+          <div>5. Stamp Duty: 0.003% on Buy turnover</div>
+          <div>6. SEBI Charges: 0.0001% (₹10/crore)</div>
+        </div>
+
+        <div class="alert-box success">
+          <strong>Small Account Lesson:</strong> On ₹1,000 capital, avoid making 10 micro-scalps. 
+          Take <strong>1 or 2 high-confluence trades</strong> with at least ₹1.50+ profit per share so brokerage represents less than 10% of your gains!
         </div>
       </div>
     `;

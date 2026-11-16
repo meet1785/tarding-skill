@@ -1,6 +1,11 @@
 /**
- * TradeMind AI - Paper Trading & Learning Terminal
- * Live virtual execution, real-time P&L tracking, automated SL/Target execution, and learning debriefs.
+ * TradeMind AI - Paper Trading & Risk Management Terminal (v3)
+ * Features:
+ * - Real-time tick evaluation & automated SL / Target triggers
+ * - Realistic Indian Brokerage, STT, and Regulatory Taxes calculation
+ * - Account-level Drawdown Circuit Breaker (Halt after 2 consecutive losses or 3% daily loss)
+ * - Net In-Pocket P&L reporting
+ * - Automated post-trade learning debriefs
  */
 
 class PaperTradingEngine {
@@ -10,6 +15,8 @@ class PaperTradingEngine {
     this.positions = [];
     this.tradeHistory = [];
     this.learningNotes = [];
+    this.consecutiveLosses = 0;
+    this.dailyDrawdownHalt = false;
     this.loadState();
 
     // Listen to live ticks to update P&L and trigger SL/Target
@@ -28,6 +35,8 @@ class PaperTradingEngine {
         this.positions = parsed.positions || [];
         this.tradeHistory = parsed.tradeHistory || [];
         this.learningNotes = parsed.learningNotes || [];
+        this.consecutiveLosses = parsed.consecutiveLosses || 0;
+        this.dailyDrawdownHalt = parsed.dailyDrawdownHalt || false;
       }
     } catch (e) {
       console.warn("Could not load paper trading state:", e);
@@ -41,7 +50,9 @@ class PaperTradingEngine {
         cash: this.cash,
         positions: this.positions,
         tradeHistory: this.tradeHistory,
-        learningNotes: this.learningNotes
+        learningNotes: this.learningNotes,
+        consecutiveLosses: this.consecutiveLosses,
+        dailyDrawdownHalt: this.dailyDrawdownHalt
       }));
     } catch (e) {
       console.warn("Could not save paper trading state:", e);
@@ -54,12 +65,21 @@ class PaperTradingEngine {
     this.positions = [];
     this.tradeHistory = [];
     this.learningNotes = [];
+    this.consecutiveLosses = 0;
+    this.dailyDrawdownHalt = false;
     this.saveState();
     this.render();
   }
 
   // Execute trade (from recommendation card or manual order)
   executeTrade(order) {
+    if (this.dailyDrawdownHalt) {
+      return {
+        success: false,
+        message: "⛔ CIRCUIT BREAKER ACTIVE: Account reached daily loss limit (2 consecutive losses). Trading halted today to protect capital."
+      };
+    }
+
     const { symbol, action = "BUY", type = "MIS", quantity, price, stopLoss, target } = order;
     const leverage = type === "MIS" ? 5 : 1;
     const totalValue = quantity * price;
@@ -131,18 +151,19 @@ class PaperTradingEngine {
     }
   }
 
-  // Close position and generate learning debrief
+  // Close position, compute realistic NSE brokerage and taxes, and generate learning debrief
   closePosition(positionId, reason = "MANUAL EXIT", exitPrice = null) {
     const idx = this.positions.findIndex(p => p.id === positionId);
     if (idx === -1) return;
 
     const pos = this.positions[idx];
     const finalPrice = exitPrice || pos.currentPrice;
-    const diff = pos.action === "BUY" ? (finalPrice - pos.entryPrice) : (pos.entryPrice - finalPrice);
-    const realizedPnL = Math.round(diff * pos.quantity * 100) / 100;
 
-    // Refund margin + PnL
-    this.cash += pos.marginUsed + realizedPnL;
+    // Calculate real NSE Brokerage, STT, Exchange fees, and GST
+    const taxes = window.Indicators.calculateNSEBrokerageAndTaxes(pos.entryPrice, finalPrice, pos.quantity);
+
+    // Refund margin + Net Realized PnL (after brokerage/STT)
+    this.cash += pos.marginUsed + taxes.netPnL;
     this.positions.splice(idx, 1);
 
     const closedRecord = {
@@ -153,13 +174,25 @@ class PaperTradingEngine {
       quantity: pos.quantity,
       entryPrice: pos.entryPrice,
       exitPrice: finalPrice,
-      realizedPnL,
+      grossPnL: taxes.grossPnL,
+      taxes: taxes.totalTaxesAndCharges,
+      realizedPnL: taxes.netPnL,
       reason,
       openTime: pos.openTime,
       closeTime: new Date().toLocaleTimeString()
     };
 
     this.tradeHistory.unshift(closedRecord);
+
+    // Track consecutive losses for Circuit Breaker
+    if (taxes.netPnL < 0) {
+      this.consecutiveLosses++;
+      if (this.consecutiveLosses >= 2) {
+        this.dailyDrawdownHalt = true;
+      }
+    } else {
+      this.consecutiveLosses = 0;
+    }
 
     // AI Learning Debrief Generation
     const debrief = this.generateLearningDebrief(closedRecord);
@@ -169,8 +202,11 @@ class PaperTradingEngine {
     this.render();
 
     if (window.showToast) {
-      const isProfit = realizedPnL >= 0;
-      window.showToast(`${pos.symbol} closed (${reason}): ${isProfit ? '+' : ''}₹${realizedPnL.toFixed(2)}`, isProfit ? "success" : "error");
+      const isProfit = taxes.netPnL >= 0;
+      window.showToast(
+        `${pos.symbol} closed (${reason}): Net ${isProfit ? '+' : ''}₹${taxes.netPnL.toFixed(2)} (Gross: ₹${taxes.grossPnL} | Tax: ₹${taxes.totalTaxesAndCharges})`,
+        isProfit ? "success" : "error"
+      );
     }
   }
 
@@ -180,11 +216,11 @@ class PaperTradingEngine {
     let lesson = "";
 
     if (trade.reason === "TARGET HIT") {
-      lesson = `Excellent execution. The ${trade.symbol} trade respected the risk-reward plan and hit target for +₹${trade.realizedPnL.toFixed(2)}. Confluence rules verified live.`;
+      lesson = `Target hit cleanly on ${trade.symbol}. Gross profit: ₹${trade.grossPnL.toFixed(2)}, NSE taxes/brokerage: ₹${trade.taxes.toFixed(2)}. Net In-Pocket: +₹${trade.realizedPnL.toFixed(2)}. Risk-reward was strictly respected.`;
     } else if (trade.reason === "STOP-LOSS HIT") {
-      lesson = `Stop-loss protected the account properly. Loss was strictly limited to -₹${Math.abs(trade.realizedPnL).toFixed(2)}, preserving 95%+ of capital for the next setup.`;
+      lesson = `Stop-loss preserved capital. Net loss was limited to -₹${Math.abs(trade.realizedPnL).toFixed(2)}. Incurring planned small losses is how professional prop traders survive to trade another day.`;
     } else {
-      lesson = `Manual exit at ₹${trade.exitPrice.toFixed(2)}. ${isWin ? 'Profit secured' : 'Loss capped'}. Always check if the trade was given adequate time to play out against the 20 EMA.`;
+      lesson = `Manual exit at ₹${trade.exitPrice.toFixed(2)}. Net: ₹${trade.realizedPnL.toFixed(2)} after ₹${trade.taxes.toFixed(2)} NSE charges. Always account for transaction costs when planning exits.`;
     }
 
     return {
@@ -192,6 +228,8 @@ class PaperTradingEngine {
       symbol: trade.symbol,
       isWin,
       pnl: trade.realizedPnL,
+      gross: trade.grossPnL,
+      taxes: trade.taxes,
       time: trade.closeTime,
       lesson
     };
@@ -211,6 +249,7 @@ class PaperTradingEngine {
     const wins = this.tradeHistory.filter(t => t.realizedPnL > 0).length;
     const winRate = this.tradeHistory.length > 0 ? Math.round((wins / this.tradeHistory.length) * 100) : 0;
     const totalRealizedPnL = this.tradeHistory.reduce((sum, t) => sum + t.realizedPnL, 0);
+    const totalTaxesPaid = this.tradeHistory.reduce((sum, t) => sum + (t.taxes || 0), 0);
 
     return {
       cash: Math.round(this.cash * 100) / 100,
@@ -219,7 +258,9 @@ class PaperTradingEngine {
       totalValue: totalPortfolioValue,
       winRate,
       tradesCount: this.tradeHistory.length,
-      realizedPnL: Math.round(totalRealizedPnL * 100) / 100
+      realizedPnL: Math.round(totalRealizedPnL * 100) / 100,
+      totalTaxesPaid: Math.round(totalTaxesPaid * 100) / 100,
+      circuitBreakerHalt: this.dailyDrawdownHalt
     };
   }
 
@@ -251,7 +292,6 @@ class PaperTradingEngine {
       `;
     }).join("");
 
-    // Update stats header values
     const stats = this.getStats();
     this.updateStatsUI(stats);
   }
@@ -276,11 +316,17 @@ class PaperTradingEngine {
   render() {
     this.renderPositionsOnly();
 
+    // Circuit breaker warning banner
+    const cbBanner = document.getElementById("circuitBreakerBanner");
+    if (cbBanner) {
+      cbBanner.style.display = this.dailyDrawdownHalt ? "block" : "none";
+    }
+
     // Render history
     const histBody = document.getElementById("historyTableBody");
     if (histBody) {
       if (this.tradeHistory.length === 0) {
-        histBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1.5rem;">No closed trades yet.</td></tr>`;
+        histBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b; padding:1.5rem;">No closed trades yet.</td></tr>`;
       } else {
         histBody.innerHTML = this.tradeHistory.map(t => {
           const color = t.realizedPnL >= 0 ? "#10b981" : "#ef4444";
@@ -291,6 +337,8 @@ class PaperTradingEngine {
               <td>${t.quantity}</td>
               <td>₹${t.entryPrice.toFixed(2)}</td>
               <td>₹${t.exitPrice.toFixed(2)}</td>
+              <td style="color:${t.grossPnL >= 0 ? '#10b981' : '#ef4444'};">₹${(t.grossPnL || t.realizedPnL).toFixed(2)}</td>
+              <td style="color:#f59e0b; font-size:0.78rem;">-₹${(t.taxes || 0).toFixed(2)}</td>
               <td style="color:${color}; font-weight:700;">${t.realizedPnL >= 0 ? '+' : ''}₹${t.realizedPnL.toFixed(2)}</td>
               <td><span style="font-size:0.75rem; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:3px;">${t.reason}</span></td>
             </tr>
@@ -308,7 +356,7 @@ class PaperTradingEngine {
         debriefContainer.innerHTML = this.learningNotes.map(n => `
           <div style="background:var(--bg-primary); border:1px solid var(--border-color); border-left:4px solid ${n.isWin ? '#10b981' : '#ef4444'}; border-radius:6px; padding:0.85rem; margin-bottom:0.75rem;">
             <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-              <span style="font-weight:700; color:${n.isWin ? '#10b981' : '#ef4444'};">${n.symbol} (${n.isWin ? '+' : ''}₹${n.pnl.toFixed(2)})</span>
+              <span style="font-weight:700; color:${n.isWin ? '#10b981' : '#ef4444'};">${n.symbol} (Net: ${n.isWin ? '+' : ''}₹${n.pnl.toFixed(2)})</span>
               <span style="font-size:0.75rem; color:#64748b;">${n.time}</span>
             </div>
             <div style="font-size:0.8rem; color:#cbd5e1; line-height:1.4;">${n.lesson}</div>
