@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradeMind AI — Live NSE Research & Paper Trading Terminal</title>
+  <meta name="description" content="AI-driven research and recommendation engine for Indian equities (NSE) with live charts and full paper trading simulation.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- TradingView Lightweight Charts Library -->
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Live Market Ticker Tape -->
+  <div class="ticker-wrap">
+    <div class="ticker-move" id="tickerMove">
+      <!-- Populated dynamically by app.js -->
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </div>
+      <div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="logo-title">TradeMind AI</span>
+          <span class="logo-badge">NSE LIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tabRecommendations">
+        <span>⚡</span> AI Recommendations
+      </button>
+      <button class="nav-tab" data-tab="tabChart">
+        <span>📈</span> Chart Studio
+      </button>
+      <button class="nav-tab" data-tab="tabPaper">
+        <span>💼</span> Paper Trading
+      </button>
+      <button class="nav-tab" data-tab="tabLearning">
+        <span>🧠</span> Learning & Rules
+      </button>
+    </nav>
+
+    <!-- Header Meta & Status -->
+    <div class="header-meta">
+      <div class="market-status-pill">
+        <span class="pulse-dot"></span>
+        <span>NSE OPEN</span>
+      </div>
+      <div class="capital-badge" title="Active capital profile">
+        <span>💰 Capital:</span>
+        <strong id="badgeHeaderCapital">₹1,000</strong>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- TAB 1: AI RECOMMENDATIONS -->
+    <section id="tabRecommendations" class="tab-pane active">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>🎯</span> AI Trade Recommendations</h1>
+          <p class="section-subtitle">Real-time technical confluence scans, multi-timeframe alignment, and custom risk-sized trade tickets.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn-secondary preset-cap-btn" data-cap="1000">₹1,000 Capital</button>
+          <button class="btn-secondary preset-cap-btn" data-cap="5000">₹5,000 Capital</button>
+          <button class="btn-secondary preset-cap-btn" data-cap="10000">₹10,000 Capital</button>
+        </div>
+      </div>
+
+      <!-- Filters & Scan Parameters -->
+      <div class="filter-card">
+        <div class="filter-grid">
+          <div class="form-group">
+            <label class="form-label" for="inputCapital">Account Capital (INR)</label>
+            <input type="number" id="inputCapital" class="form-input" value="1000" min="100" step="100">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="selectLeverage">Product / Margin</label>
+            <select id="selectLeverage" class="form-select">
+              <option value="5" selected>Intraday MIS (5x Leverage)</option>
+              <option value="1">Delivery CNC (1x Cash)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="selectRisk">Risk Per Trade</label>
+            <select id="selectRisk" class="form-select">
+              <option value="1.0">1.0% (Conservative - ₹10/₹1k)</option>
+              <option value="1.5" selected>1.5% (Balanced - ₹15/₹1k)</option>
+              <option value="2.0">2.0% (Maximum Cap - ₹20/₹1k)</option>
+              <option value="3.0">3.0% (Aggressive Setup)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="selectSector">Sector Filter</label>
+            <select id="selectSector" class="form-select">
+              <option value="all" selected>All Sectors</option>
+              <option value="PSU Banks">PSU Banks (Leading Today)</option>
+              <option value="Defence">Defence & Aerospace</option>
+              <option value="Metals">Metals & Mining</option>
+              <option value="Energy">Energy & Power</option>
+              <option value="FMCG">FMCG</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <button id="btnRunScan" class="btn-primary" style="height:42px;">
+              <span>🔍</span> Run Deep AI Scan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Research Progress Feedback -->
+      <div id="researchStatusCard" class="research-status-card">
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700;">
+          <span style="color:#38bdf8;">AI Quant Engine Researching...</span>
+          <span id="researchProgressText" style="color:#94a3b8; font-family:var(--font-mono); font-size:0.75rem;">Initializing...</span>
+        </div>
+        <div class="research-progress-bar">
+          <div id="researchProgressFill" class="research-progress-fill"></div>
+        </div>
+        <div class="research-steps">
+          <span>1. Feed Sync</span>
+          <span>2. Trend & EMAs</span>
+          <span>3. RSI & Volume</span>
+          <span>4. Fibonacci & ATR</span>
+          <span>5. Risk Sizing</span>
+        </div>
+      </div>
+
+      <!-- Recommendations Grid -->
+      <div id="recommendationsGrid" class="cards-grid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- TAB 2: LIVE CHART STUDIO -->
+    <section id="tabChart" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>📈</span> Interactive Chart Studio</h1>
+          <p class="section-subtitle">Real-time candlestick charts with EMA 9/21, volume, ATR stops, and Fibonacci projections.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <label style="font-size:0.8rem; color:#94a3b8; font-weight:700;">SYMBOL:</label>
+          <select id="selectChartSymbol" class="form-select" style="width:160px; font-weight:700;">
+            <option value="PNB" selected>PNB (₹145.84)</option>
+            <option value="CANBK">CANBK (₹132.02)</option>
+            <option value="TATASTEEL">TATASTEEL (₹186.13)</option>
+            <option value="POWERGRID">POWERGRID (₹256.50)</option>
+            <option value="BEL">BEL (₹402.85)</option>
+            <option value="SBIN">SBIN (₹1,094.15)</option>
+            <option value="NTPC">NTPC (₹317.75)</option>
+            <option value="ITC">ITC (₹285.60)</option>
+            <option value="RELIANCE">RELIANCE (₹1,339.70)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="chart-studio-layout">
+        <div class="chart-card">
+          <div class="chart-controls-bar">
+            <div class="timeframe-group">
+              <button class="tf-btn active">1D</button>
+              <button class="tf-btn">15m</button>
+              <button class="tf-btn">5m</button>
+              <button class="tf-btn">1m</button>
+            </div>
+
+            <div class="indicator-toggle-group">
+              <button class="ind-toggle-btn active" data-ind="ema9">EMA 9 (Cyan)</button>
+              <button class="ind-toggle-btn active" data-ind="ema21">EMA 21 (Orange)</button>
+            </div>
+          </div>
+
+          <div id="chartContainer"></div>
+        </div>
+
+        <!-- Technical Dossier Side Panel -->
+        <div class="dossier-card">
+          <div class="dossier-section">
+            <div class="dossier-title">Technical Dossier</div>
+            <div id="dossierSymbol" style="font-size:1.1rem; font-weight:800; color:#38bdf8; margin-bottom:0.5rem;">PNB</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-family:var(--font-mono); font-size:0.85rem;">
+              <div>RSI (14): <strong id="dossierRsi" style="color:#f59e0b;">78.4</strong></div>
+              <div>ATR (14): <strong id="dossierAtr" style="color:#38bdf8;">₹3.72</strong></div>
+            </div>
+          </div>
+
+          <div class="dossier-section">
+            <div class="dossier-title">Fibonacci Retracement Grid</div>
+            <table class="fib-table">
+              <tbody id="fibTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="dossier-section">
+            <div class="dossier-title">Trade Execution Rule</div>
+            <div style="font-size:0.78rem; color:#94a3b8; line-height:1.4;">
+              Blue line indicates <strong>Entry</strong>, Red dashed line is your <strong>Hard Stop-Loss</strong> (ATR-based), and Green dashed line marks <strong>Profit Target 1</strong> (1.5R).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PAPER TRADING TERMINAL -->
+    <section id="tabPaper" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>💼</span> Paper Trading Terminal</h1>
+          <p class="section-subtitle">Real-time virtual execution to test and verify AI recommendations risk-free with live tick P&L.</p>
+        </div>
+        <button id="btnResetAccount" class="btn-secondary">
+          <span>🔄</span> Reset Capital
+        </button>
+      </div>
+
+      <!-- Portfolio Summary Cards -->
+      <div class="portfolio-summary-grid">
+        <div class="stat-box">
+          <div class="stat-label">Total Portfolio Value</div>
+          <div class="stat-value" id="statTotalValue" style="color:#38bdf8;">₹1,000.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Available Cash Margin</div>
+          <div class="stat-value" id="statCash">₹1,000.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Unrealized P&L</div>
+          <div class="stat-value" id="statUnrealizedPnL" style="color:#10b981;">₹0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Win Rate %</div>
+          <div class="stat-value" id="statWinRate" style="color:#f59e0b;">0% (0 trades)</div>
+        </div>
+      </div>
+
+      <div class="terminal-grid">
+        <!-- Manual Order Ticket Box -->
+        <div class="order-box-card">
+          <h3 style="font-size:1rem; font-weight:800; margin-bottom:1rem; display:flex; align-items:center; gap:0.4rem;">
+            <span>⚡</span> Manual Order Ticket
+          </h3>
+          <form id="paperOrderForm" style="display:flex; flex-direction:column; gap:0.85rem;">
+            <div class="form-group">
+              <label class="form-label" for="orderSymbol">Symbol</label>
+              <select id="orderSymbol" class="form-select">
+                <option value="PNB">PNB (₹145.84)</option>
+                <option value="CANBK">CANBK (₹132.02)</option>
+                <option value="TATASTEEL">TATASTEEL (₹186.13)</option>
+                <option value="POWERGRID">POWERGRID (₹256.50)</option>
+                <option value="BEL">BEL (₹402.85)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="orderAction">Side</label>
+              <select id="orderAction" class="form-select">
+                <option value="BUY">BUY (Long)</option>
+                <option value="SELL">SELL (Short)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="orderProduct">Product Type</label>
+              <select id="orderProduct" class="form-select">
+                <option value="MIS" selected>MIS (Intraday 5x Leverage)</option>
+                <option value="CNC">CNC (Delivery 1x Cash)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="orderQty">Quantity (Shares)</label>
+              <input type="number" id="orderQty" class="form-input" value="10" min="1">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+              <div class="form-group">
+                <label class="form-label" for="orderSL">Stop-Loss (₹)</label>
+                <input type="number" id="orderSL" class="form-input" placeholder="Optional" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="orderTgt">Target (₹)</label>
+                <input type="number" id="orderTgt" class="form-input" placeholder="Optional" step="0.1">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top:0.5rem;">
+              Submit Paper Order
+            </button>
+          </form>
+        </div>
+
+        <!-- Open Positions Table -->
+        <div class="data-table-card">
+          <div class="table-header">
+            <h3 style="font-size:0.95rem; font-weight:700;">Active Open Positions</h3>
+            <span style="font-size:0.75rem; color:#64748b;">Auto-evaluates Stop-Loss & Target on live ticks</span>
+          </div>
+          <div class="table-responsive">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Qty</th>
+                  <th>Entry</th>
+                  <th>LTP</th>
+                  <th>Unrealized P&L</th>
+                  <th>SL / Target</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="positionsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Closed Order History -->
+          <div class="table-header" style="border-top:1px solid var(--border-color);">
+            <h3 style="font-size:0.95rem; font-weight:700;">Closed Trades Log</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Qty</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Realized P&L</th>
+                  <th>Exit Reason</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: LEARNING & RULES -->
+    <section id="tabLearning" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title"><span>🧠</span> AI Learning & Trading Discipline</h1>
+          <p class="section-subtitle">Real-time trade debriefs and core rules for managing small accounts on Indian stock exchanges.</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+        <!-- Learning Debriefs -->
+        <div class="filter-card">
+          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+            <span>📝</span> Live Trade Debriefs & Lessons
+          </h3>
+          <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:1rem;">Every closed paper trade generates an automatic AI audit analyzing whether the technical thesis and risk parameters held up.</p>
+          <div id="debriefContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Discipline Playbook -->
+        <div class="filter-card">
+          <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+            <span>🛡️</span> The ₹1,000 Capital Intraday Playbook
+          </h3>
+          <ul style="font-size:0.85rem; color:#cbd5e1; line-height:1.7; padding-left:1.25rem;">
+            <li><strong>Ticket Price Discipline:</strong> Only trade stocks priced under ₹300 (e.g. PNB, CANBK, TATASTEEL, POWERGRID). High-priced stocks prevent proper position sizing.</li>
+            <li><strong>Brokerage & Friction Awareness:</strong> Ensure your broker charges percentage-based brokerage (0.05%), avoiding flat ₹20 fee traps on tiny accounts.</li>
+            <li><strong>Opening 15-Minute Rule:</strong> Never trade between 9:15 AM and 9:30 AM IST. Let initial institutional knee-jerk moves settle and establish opening range boundaries.</li>
+            <li><strong>Hard System Stop-Loss:</strong> Never rely on "mental stops". Place a Stop-Loss Limit (SL-L) order as soon as your order fills.</li>
+            <li><strong>Trailing to Breakeven:</strong> When the trade achieves Target 1 (+1.5R), immediately move your stop-loss to entry price for a completely risk-free session.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/scanner.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/papertrading.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nse-live-data": {
+      "command": "C:\\Users\\MEET\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "args": ["c:\\Users\\MEET\\Downloads\\trade-analyzer\\nse_server.py"]
+    }
+  }
+}

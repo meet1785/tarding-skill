@@ -1,0 +1,12 @@
+# Dependencies and Cloned Repos
+repos/
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+
+# Local cache & logs
+*.log
+.system_generated/
+test_*.py
+scan_results.json
